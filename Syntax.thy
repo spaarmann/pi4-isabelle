@@ -1,13 +1,15 @@
 theory Syntax imports Main Nominal2.Nominal2 begin
 
 text\<open>Questions:
-  - To make binding x in a formula work for refinement types to work, I made all the datatypes into
+  - To make binding x in a formula for refinement types work, I made all the datatypes into
     nominal_datatypes even when they're theoretically simple on their own. Is that correct / the
     only way?\<close>
 
 text\<open>We're using Nominal2, so variables are modelled as atoms.\<close>
 atom_decl var
-atom_decl instanc
+
+text\<open>Instances don't appear in binders, so we can just model these as string names.\<close>
+type_synonym instanc = string
 
 text\<open>Bit vectors are essentially boolean lists.
   The paper and implementation have an additional concept of bit\<close>
