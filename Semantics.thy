@@ -1,21 +1,50 @@
-theory Semantics imports Main Syntax begin
+theory Semantics imports Syntax "HOL-Library.AList" begin
 
 datatype heap = Heap "packet \<Rightarrow> bv" "instanc \<Rightarrow> bv option"
+
+text\<open>This is necessary to use heaps in nominal_functions. It basically states that
+no variables actually appear in the type.\<close>
+instantiation heap :: pure begin
+  definition permute_heap :: "perm \<Rightarrow> heap \<Rightarrow> heap"  where
+    "permute_heap _ x = x"
+  instance by standard (auto simp add: permute_heap_def)
+end
+
 fun heap_lookup_packet :: "heap \<Rightarrow> packet \<Rightarrow> bv" where
   "heap_lookup_packet (Heap pkts _) p = pkts p"
 fun heap_lookup_instance :: "heap \<Rightarrow> instanc \<Rightarrow> bv option" where
   "heap_lookup_instance (Heap _ insts) i = insts i"
 
-type_synonym env = "var \<Rightarrow> heap option"
+type_synonym env = "(var \<times> heap) list"
 
 fun lookup_packet :: "env \<Rightarrow> var \<Rightarrow> packet \<Rightarrow> bv option" where
-  "lookup_packet \<epsilon> x p = map_option (\<lambda>h. heap_lookup_packet h p) (\<epsilon> x)"
+  "lookup_packet \<epsilon> x p = map_option (\<lambda>h. heap_lookup_packet h p) (map_of \<epsilon> x)"
 fun lookup_instance :: "env \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> bv option" where
-  "lookup_instance \<epsilon> x i = Option.bind (\<epsilon> x) (\<lambda>h. heap_lookup_instance h i)"
+  "lookup_instance \<epsilon> x i = Option.bind (map_of \<epsilon> x) (\<lambda>h. heap_lookup_instance h i)"
 (* This also doesn't work because sliceable is a nominal_datatype atm... *)
-(*fun lookup_sliceable :: "sliceable \<Rightarrow> env \<Rightarrow> bv option" where
+nominal_function lookup_sliceable :: "sliceable \<Rightarrow> env \<Rightarrow> bv option" where
   "lookup_sliceable (SlPacket x p) \<epsilon> = lookup_packet \<epsilon> x p" |
-  "lookup_sliceable (SlInstance x i) \<epsilon> = lookup_instance \<epsilon> x i"*)
+  "lookup_sliceable (SlInstance x i) \<epsilon> = lookup_instance \<epsilon> x i"
+  using [[simproc del: alpha_lst]]
+  subgoal unfolding eqvt_def by (auto simp add: lookup_sliceable_graph_aux_def permute_heap_def
+                                            permute_list_def permute_option_def permute_bool_def permute_char_def)
+  subgoal by (erule lookup_sliceable_graph.induct) (auto simp: fresh_star_def fresh_at_base)
+                      apply clarify
+  subgoal for P t s y
+    by (rule term.strong_exhaust[of t P "(s, y)"]) (auto simp: fresh_star_def fresh_Pair)
+                      apply (simp_all add: fresh_star_def fresh_at_base)
+  subgoal for x' y' s' t' x t
+    apply (erule Abs_lst1_fcb2'[where c = "(s', y')"])
+       apply (simp_all add: eqvt_at_def fresh_star_def)
+       apply (simp_all add: perm_supp_eq Abs_fresh_iff fresh_Pair)
+    apply (metis fresh_star_def fresh_star_supp_conv supp_perm_eq_test)
+    apply (metis fresh_star_def fresh_star_supp_conv supp_perm_eq_test)
+    done
+  done
+nominal_termination (eqvt)
+  by lexicographic_order
+
+term lookup_sliceable_graph_aux
 
 datatype val = BV bv | Num nat
 

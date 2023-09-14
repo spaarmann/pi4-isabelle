@@ -1,11 +1,18 @@
-theory Syntax imports Main Nominal2.Nominal2 begin
+theory Syntax imports Nominal2.Nominal2 begin
 
 text\<open>Questions:
   - To make binding x in a formula for refinement types work, I made all the datatypes into
     nominal_datatypes even when they're theoretically simple on their own. Is that correct / the
-    only way?\<close>
+    only way?
+  - Defining functions on nominal_datatypes?
+  - Op sem for expressions and especially formulas
+  - Typing for expressions and formulas\<close>
 
-text\<open>We're using Nominal2, so variables are modelled as atoms.\<close>
+text\<open>From last meeting:
+  - I think there really are no other binders than the three for types, if we model instances
+    without them.
+  - It doesn't seem that dependent function types can occur in \<tau> based on the implementation.\<close>
+
 atom_decl var
 
 text\<open>Instances don't appear in binders, so we can just model these as string names.\<close>
@@ -29,8 +36,8 @@ nominal_datatype exp =
   Packet var packet
 
 nominal_datatype formula =
-  Eq exp exp | Gt exp exp | And formula formula | Not formula |
-  True | False | IsValid var instanc
+  FEq exp exp | FGt exp exp | FAnd formula formula | FNot formula |
+  FTrue | FFalse | FIsValid var instanc
 
 nominal_datatype heap_ty =
   Nothing | Top |
