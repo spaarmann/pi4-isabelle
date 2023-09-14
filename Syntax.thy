@@ -1,17 +1,6 @@
 theory Syntax imports Nominal2.Nominal2 begin
 
-text\<open>Questions:
-  - To make binding x in a formula for refinement types work, I made all the datatypes into
-    nominal_datatypes even when they're theoretically simple on their own. Is that correct / the
-    only way?
-  - Defining functions on nominal_datatypes?
-  - Op sem for expressions and especially formulas
-  - Typing for expressions and formulas\<close>
-
-text\<open>From last meeting:
-  - I think there really are no other binders than the three for types, if we model instances
-    without them.
-  - It doesn't seem that dependent function types can occur in \<tau> based on the implementation.\<close>
+section\<open>General Definitions\<close>
 
 atom_decl var
 
@@ -28,16 +17,36 @@ datatype field = Field string int
 datatype header_type = HeaderType var "field list"
 type_synonym header_table = "instanc \<Rightarrow> header_type" (* Should we have header_type option here? *)
 
+type_synonym header_instance = "string \<Rightarrow> bv"
+type_synonym headers = "instanc \<Rightarrow> header_instance"
+
+
+section\<open>Expressions and Formulas\<close>
+
 nominal_datatype sliceable = SlPacket var packet | SlInstance var instanc
 
+(* TODO: The implementation indicates that slicing bounds can only be constants, not expressions.
+         Do we want to keep it like that? *)
 nominal_datatype exp =
   Num nat | Bv bv | Len var packet |
   Plus exp exp | Concat exp exp | Slice sliceable int int |
   Packet var packet
 
 nominal_datatype formula =
-  FEq exp exp | FGt exp exp | FAnd formula formula | FNot formula |
-  FTrue | FFalse | FIsValid var instanc
+  Eq exp exp | Gt exp exp | And formula formula | Not formula |
+  FTrue | FFalse | IsValid var instanc
+
+inductive "value" :: "exp \<Rightarrow> bool" where
+  "value (Num _)" |
+  "value (Bv _)"
+
+declare value.intros[simp]
+declare value.intros[intro]
+
+equivariance "value"
+
+
+section\<open>Types\<close>
 
 nominal_datatype heap_ty =
   Nothing | Top |
@@ -49,6 +58,9 @@ nominal_datatype heap_ty =
 nominal_datatype pi_ty = PiTy x::var \<tau>\<^sub>1::heap_ty \<tau>\<^sub>2::heap_ty binds x in \<tau>\<^sub>2
 
 nominal_datatype base_ty = Nat | Bool | BV | Pi pi_ty
+
+
+section\<open>Commands\<close>
 
 datatype cmd =
   Extract instanc | Remit instanc | Add instanc |
