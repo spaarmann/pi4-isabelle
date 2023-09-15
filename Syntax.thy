@@ -14,12 +14,8 @@ type_synonym bv = "bool list"
 nominal_datatype packet = PktIn | PktOut
 
 datatype field = Field string int
-datatype header_type = HeaderType var "field list"
+datatype header_type = HeaderType var "field list" (* What does this var do here? *)
 type_synonym header_table = "instanc \<Rightarrow> header_type" (* Should we have header_type option here? *)
-
-type_synonym header_instance = "string \<Rightarrow> bv"
-type_synonym headers = "instanc \<Rightarrow> header_instance"
-
 
 section\<open>Expressions and Formulas\<close>
 

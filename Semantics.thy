@@ -10,20 +10,33 @@ To talk about:
 - See TODOs on the exp small-step semantics.
 - See TODO on exp.\<close>
 
-datatype heap = Heap "packet \<Rightarrow> bv" "instanc \<Rightarrow> bv option"
+datatype headers = Instances "instanc \<Rightarrow> bv option"
+datatype heap = Heap bv bv headers
 
 text\<open>This is necessary to use heaps in nominal_functions. It basically states that
 no variables actually appear in the type.\<close>
+instantiation headers :: pure begin
+  definition permute_headers :: "perm \<Rightarrow> headers \<Rightarrow> headers" where
+    "permute_headers _ x = x"
+  instance by standard (auto simp add: permute_headers_def)
+end
 instantiation heap :: pure begin
   definition permute_heap :: "perm \<Rightarrow> heap \<Rightarrow> heap"  where
     "permute_heap _ x = x"
   instance by standard (auto simp add: permute_heap_def)
 end
 
+fun triple_to_heap :: "bv \<Rightarrow> bv \<Rightarrow> headers \<Rightarrow> heap" where
+  "triple_to_heap In Out H = Heap In Out H"
+
+(* doesn't work because of nominal_datatype vs datatype right now I think.
+   But Dmitriy had some way of making these constructors? *)
 fun heap_lookup_packet :: "heap \<Rightarrow> packet \<Rightarrow> bv" where
-  "heap_lookup_packet (Heap pkts _) p = pkts p"
+  "heap_lookup_packet (Heap In Out _) PktIn = In" |
+  "heap_lookup_packet (Heap In Out _) PktOut = Out" 
+
 fun heap_lookup_instance :: "heap \<Rightarrow> instanc \<Rightarrow> bv option" where
-  "heap_lookup_instance (Heap _ insts) i = insts i"
+  "heap_lookup_instance (Heap _ (Instances insts)) i = insts i"
 
 (* Easier to work with than "var \<Rightarrow> heap" with Nominal2 because it has a finite support (I think) *)
 type_synonym env = "(var \<times> heap) list"
@@ -94,6 +107,15 @@ that H really maps instance names to bit vectors too?
 I suppose technically there is a 1-to-1 correspondence between a full instance bit vector and a
 "record containing the field values" for an instance. But do we really have to model it like this,
 converting back and forth when needed?
+
+What forms do we actually have?
+ - In types: Heaps with PktIn PktOut instance, all mapping to bvs
+ - In semantics: H with instance, mapping to names to bvs
+ - In semantics: (I, O, H), being PktIn PktOut and an H as above
+
+So let's model the last two as mapping to bvs as well, with names just desugaring into slices? We
+have the HT that gives us types for each instanc, so can just look up the range corresponding to a
+name.
 \<close>
 
 (* TODO: At the moment, we just ignore variables here and assume they must be "heap". Should we
