@@ -21,26 +21,39 @@ section\<open>Expressions and Formulas\<close>
 
 nominal_datatype sliceable = SlPacket var packet | SlInstance var instanc
 
+datatype val = VNum nat | VBv bv
+instantiation val :: pure begin
+  definition permute_val :: "perm \<Rightarrow> val \<Rightarrow> val" where
+    "permute_val _ v = v"
+  instance by standard (auto simp add: permute_val_def)
+end
+
 (* TODO: The implementation indicates that slicing bounds can only be constants, not expressions.
          Do we want to keep it like that? *)
 nominal_datatype exp =
-  Num nat | Bv bv | Len var packet |
-  Plus exp exp | Concat exp exp | Slice sliceable int int |
-  Packet var packet
+  Num nat | Bv bv |
+  Plus exp exp | Concat exp exp |
+  Packet var packet | Len var packet |
+  Slice sliceable int int
 
 nominal_datatype formula =
+  FTrue | FFalse |
   Eq exp exp | Gt exp exp | And formula formula | Not formula |
-  FTrue | FFalse | IsValid var instanc
+  IsValid var instanc
 
-inductive "value" :: "exp \<Rightarrow> bool" where
-  "value (Num _)" |
-  "value (Bv _)"
+inductive "value\<^sub>e" :: "exp \<Rightarrow> bool" where
+  "value\<^sub>e (Num _)" |
+  "value\<^sub>e (Bv _)"
+declare value\<^sub>e.intros[simp]
+declare value\<^sub>e.intros[intro]
+equivariance "value\<^sub>e"
 
-declare value.intros[simp]
-declare value.intros[intro]
-
-equivariance "value"
-
+inductive "value\<^sub>f" :: "formula \<Rightarrow> bool" where
+  "value\<^sub>f FTrue" |
+  "value\<^sub>f FFalse"
+declare value\<^sub>f.intros[simp]
+declare value\<^sub>f.intros[intro]
+equivariance "value\<^sub>f"
 
 section\<open>Types\<close>
 
