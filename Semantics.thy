@@ -28,6 +28,8 @@ instantiation heap :: pure begin
   instance by standard (auto simp add: permute_heap_def)
 end
 
+definition "empty_headers = Headers Map.empty"
+
 free_constructors packet for PktIn | PktOut
 using packet.strong_exhaust apply auto done
 (* TODO: Are these warnings bad? Can I do something about them? *)
@@ -50,11 +52,6 @@ fun heap_lookup_instance :: "heap \<Rightarrow> instanc \<Rightarrow> bv option"
 
 (* Easier to work with than "var \<Rightarrow> heap" with Nominal2 because it has a finite support (I think) *)
 type_synonym env = "(var \<times> heap) list"
-
-(* These are declared in the LambdaAuth session, so I thought it might help *)
-declare
-  fresh_star_Pair[simp] fresh_star_insert[simp] fresh_Nil[simp]
-  pure_supp[simp] pure_fresh[simp]
 
 fun env_lookup_packet :: "env \<Rightarrow> var \<Rightarrow> packet \<Rightarrow> bv option" where
   "env_lookup_packet \<epsilon> x p = map_option (\<lambda>h. heap_lookup_packet h p) (map_of \<epsilon> x)"
@@ -251,10 +248,24 @@ inductive
   small_step :: "header_table \<Rightarrow> (bv \<times> bv \<times> headers \<times> cmd) \<Rightarrow> (bv \<times> bv \<times> headers \<times> cmd) \<Rightarrow> bool"
   ("(1_/ \<turnstile>/ (_ \<rightarrow>/ _))" [50,0,50] 50)
 where
-  E_Seq1: "\<lbrakk> HT \<turnstile> (I, Out, H, c\<^sub>1) \<rightarrow> (I', Out', H', c\<^sub>1') \<rbrakk>
-    \<Longrightarrow> HT \<turnstile> (I, Out, H, Seq c\<^sub>1 c\<^sub>2) \<rightarrow> (I', Out', H', Seq c\<^sub>1' c\<^sub>2)" |
-  E_Seq: "HT \<turnstile> (I, Out, H, Seq Skip c) \<rightarrow> (I, Out, H, c)" |
-  
-  E_Ascribe: "HT \<turnstile> (I, Out, H, Ascribe c ty) \<rightarrow> (I, Out, H, c)"
+  C_Seq1:     "\<lbrakk> HT \<turnstile> (In, Out, H, c\<^sub>1) \<rightarrow> (In', Out', H', c\<^sub>1') \<rbrakk>
+              \<Longrightarrow> HT \<turnstile> (In, Out, H, Seq c\<^sub>1 c\<^sub>2) \<rightarrow> (In', Out', H', Seq c\<^sub>1' c\<^sub>2)" |
+  C_Seq:      "HT \<turnstile> (In, Out, H, Seq Skip c) \<rightarrow> (In, Out, H, c)" |
+  C_If1:      "\<lbrakk> (In, Out, H, f) \<rightarrow>\<^sub>f f' \<rbrakk>
+              \<Longrightarrow> HT \<turnstile> (In, Out, H, If f c\<^sub>1 c\<^sub>2) \<rightarrow> (In, Out, H, If f' c\<^sub>1 c\<^sub>2)" |
+  C_IfTrue:   "\<lbrakk> t\<^sub>1 = FTrue \<rbrakk>
+              \<Longrightarrow> HT \<turnstile> (In, Out, H, If t\<^sub>1 c\<^sub>1 c\<^sub>2) \<rightarrow> (In, Out, H, c\<^sub>1)" |
+  C_IfFalse:  "\<lbrakk> t\<^sub>1 = FFalse \<rbrakk>
+              \<Longrightarrow> HT \<turnstile> (In, Out, H, If t\<^sub>1 c\<^sub>1 c\<^sub>2) \<rightarrow> (In, Out, H, c\<^sub>2)" |
+  C_Assign1:  "\<lbrakk> (In, Out, H, e) \<rightarrow>\<^sub>e e' \<rbrakk>
+              \<Longrightarrow> HT \<turnstile> (In, Out, H, Assign i f e) \<rightarrow> (In, Out, H, Assign i f e')" |
+  (* C_Assign:   "\<lbrakk> v = Bv bs; \<rbrakk> TODO: This needs splicing bs into the i bv according to field info*)
+  (* These 3 need infrastructure for (de)serializing, initial value based on instance type *)
+  (* Extract *)
+  (* Remit *)
+  (* Add *)
+  C_Reset:    "\<lbrakk> In' = Out @ In \<rbrakk>
+              \<Longrightarrow> HT \<turnstile> (In, Out, H, Reset) \<rightarrow> (In', [], empty_headers, Skip)" |
+  C_Ascribe:  "HT \<turnstile> (In, Out, H, Ascribe c ty) \<rightarrow> (In, Out, H, c)"
 
 end

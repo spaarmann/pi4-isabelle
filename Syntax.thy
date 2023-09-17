@@ -72,8 +72,8 @@ nominal_datatype base_ty = Nat | Bool | BV | Pi pi_ty
 section\<open>Commands\<close>
 
 datatype cmd =
+  Skip | Seq cmd cmd | If formula cmd cmd | Assign instanc string exp |
   Extract instanc | Remit instanc | Add instanc |
-  If formula cmd cmd | Seq cmd cmd | Assign instanc string exp |
-  Skip | Reset | Ascribe cmd pi_ty
+  Reset | Ascribe cmd pi_ty
 
 end
