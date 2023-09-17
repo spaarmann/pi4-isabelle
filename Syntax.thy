@@ -6,16 +6,21 @@ atom_decl var
 
 text\<open>Instances don't appear in binders, so we can just model these as string names.\<close>
 type_synonym instanc = string
+type_synonym field_name = string
 
 text\<open>Bit vectors are essentially boolean lists.
-  The paper and implementation have an additional concept of bit\<close>
+  The paper and implementation have an additional concept of bit variables, but I haven't seen a
+  a place where they're actually needed yet.\<close>
 type_synonym bv = "bool list"
 
 nominal_datatype packet = PktIn | PktOut
 
-datatype field = Field string int
-datatype header_type = HeaderType var "field list" (* What does this var do here? *)
+datatype field = Field field_name int
+datatype header_type = HeaderType string "field list"
 type_synonym header_table = "instanc \<Rightarrow> header_type" (* Should we have header_type option here? *)
+
+datatype headers = Headers "instanc \<Rightarrow> bv option"
+datatype heap = Heap bv bv headers
 
 section\<open>Expressions and Formulas\<close>
 
@@ -72,7 +77,7 @@ nominal_datatype base_ty = Nat | Bool | BV | Pi pi_ty
 section\<open>Commands\<close>
 
 datatype cmd =
-  Skip | Seq cmd cmd | If formula cmd cmd | Assign instanc string exp |
+  Skip | Seq cmd cmd | If formula cmd cmd | Assign instanc field_name exp |
   Extract instanc | Remit instanc | Add instanc |
   Reset | Ascribe cmd pi_ty
 

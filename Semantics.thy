@@ -1,4 +1,4 @@
-theory Semantics imports Syntax "HOL-Library.AList" begin
+theory Semantics imports Syntax Utils "HOL-Library.AList" begin
 
 text\<open>For next meeting:
 Questions/Help:
@@ -11,70 +11,6 @@ To talk about:
 - See TODO on exp.
 - Heaps, see text block below.
 \<close>
-
-datatype headers = Headers "instanc \<Rightarrow> bv option"
-datatype heap = Heap bv bv headers
-
-text\<open>This is necessary to use heaps in nominal_functions. It basically states that
-no variables actually appear in the type.\<close>
-instantiation headers :: pure begin
-  definition permute_headers :: "perm \<Rightarrow> headers \<Rightarrow> headers" where
-    "permute_headers _ x = x"
-  instance by standard (auto simp add: permute_headers_def)
-end
-instantiation heap :: pure begin
-  definition permute_heap :: "perm \<Rightarrow> heap \<Rightarrow> heap"  where
-    "permute_heap _ x = x"
-  instance by standard (auto simp add: permute_heap_def)
-end
-
-definition "empty_headers = Headers Map.empty"
-
-free_constructors packet for PktIn | PktOut
-using packet.strong_exhaust apply auto done
-(* TODO: Are these warnings bad? Can I do something about them? *)
-(* TODO: Is it preferable to do this, or make every function matching on packets
-         a nominal_function? *)
-(* TODO: This works when done here but not when done in Syntax? *)
-
-fun triple_to_heap :: "bv \<Rightarrow> bv \<Rightarrow> headers \<Rightarrow> heap" where
-  "triple_to_heap In Out H = Heap In Out H"
-
-fun header_lookup :: "headers \<Rightarrow> instanc \<Rightarrow> bv option" where
-  "header_lookup (Headers h) i = h i" 
-
-fun heap_lookup_packet :: "heap \<Rightarrow> packet \<Rightarrow> bv" where
-  "heap_lookup_packet (Heap In Out _) PktIn = In" |
-  "heap_lookup_packet (Heap In Out _) PktOut = Out"
-
-fun heap_lookup_instance :: "heap \<Rightarrow> instanc \<Rightarrow> bv option" where
-  "heap_lookup_instance (Heap _ _ (Headers insts)) i = insts i"
-
-(* Easier to work with than "var \<Rightarrow> heap" with Nominal2 because it has a finite support (I think) *)
-type_synonym env = "(var \<times> heap) list"
-
-fun env_lookup_packet :: "env \<Rightarrow> var \<Rightarrow> packet \<Rightarrow> bv option" where
-  "env_lookup_packet \<epsilon> x p = map_option (\<lambda>h. heap_lookup_packet h p) (map_of \<epsilon> x)"
-fun env_lookup_instance :: "env \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> bv option" where
-  "env_lookup_instance \<epsilon> x i = Option.bind (map_of \<epsilon> x) (\<lambda>h. heap_lookup_instance h i)"
-nominal_function env_lookup_sliceable :: "env \<Rightarrow> sliceable \<Rightarrow> bv option" where
-  "env_lookup_sliceable \<epsilon> (SlPacket x p) = env_lookup_packet \<epsilon> x p" |
-  "env_lookup_sliceable \<epsilon> (SlInstance x i) = env_lookup_instance \<epsilon> x i"
-  (*using [[simproc del: alpha_lst defined_all]]*)
-  subgoal by (simp add: eqvt_def env_lookup_sliceable_graph_aux_def)
-  subgoal by (erule env_lookup_sliceable_graph.induct) (auto)
-  apply clarify
-  subgoal for P e s
-    by (rule sliceable.strong_exhaust[of s P]) (auto)
-  apply (simp_all)
-done
-nominal_termination (eqvt)
-  by lexicographic_order
-
-thm sliceable.strong_exhaust
-
-fun slice :: "'a list \<Rightarrow> int \<Rightarrow> int \<Rightarrow> 'a list" where
-  "slice xs n m = take (nat (m - n)) (drop (nat n) xs)"
 
 section\<open>Expressions and Formulas\<close>
 
@@ -259,7 +195,10 @@ where
               \<Longrightarrow> HT \<turnstile> (In, Out, H, If t\<^sub>1 c\<^sub>1 c\<^sub>2) \<rightarrow> (In, Out, H, c\<^sub>2)" |
   C_Assign1:  "\<lbrakk> (In, Out, H, e) \<rightarrow>\<^sub>e e' \<rbrakk>
               \<Longrightarrow> HT \<turnstile> (In, Out, H, Assign i f e) \<rightarrow> (In, Out, H, Assign i f e')" |
-  (* C_Assign:   "\<lbrakk> v = Bv bs; \<rbrakk> TODO: This needs splicing bs into the i bv according to field info*)
+  C_Assign:   "\<lbrakk> v = Bv bs; header_lookup H i = Some inst; HT i = ht;
+                 header_field_to_range ht f = (n, m); splice inst n m bs = bs';
+                 H' = header_update H i bs' \<rbrakk>
+              \<Longrightarrow> HT \<turnstile> (In, Out, H, Assign i f v) \<rightarrow> (In, Out, H', Skip)" |
   (* These 3 need infrastructure for (de)serializing, initial value based on instance type *)
   (* Extract *)
   (* Remit *)
