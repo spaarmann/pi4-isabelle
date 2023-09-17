@@ -2,14 +2,15 @@ theory Semantics imports Syntax "HOL-Library.AList" begin
 
 text\<open>For next meeting:
 Questions/Help:
-- Nominal2 proof for lookup_instance. Can't get the first goal to be solved.
+- Nominal2 proof for lookup_instance and the denot semantics. Can't get the first goal to be solved.
   Figured it was more productive to keep going for now.
 - See free_constructors packet below.
-- Heaps, see text block below.
 To talk about:
 - Think I figured out what's going on with expression and formula semantics, see below.
 - See TODOs on the exp small-step semantics.
-- See TODO on exp.\<close>
+- See TODO on exp.
+- Heaps, see text block below.
+\<close>
 
 datatype headers = Headers "instanc \<Rightarrow> bv option"
 datatype heap = Heap bv bv headers
@@ -62,24 +63,18 @@ fun env_lookup_instance :: "env \<Rightarrow> var \<Rightarrow> instanc \<Righta
 nominal_function env_lookup_sliceable :: "env \<Rightarrow> sliceable \<Rightarrow> bv option" where
   "env_lookup_sliceable \<epsilon> (SlPacket x p) = env_lookup_packet \<epsilon> x p" |
   "env_lookup_sliceable \<epsilon> (SlInstance x i) = env_lookup_instance \<epsilon> x i"
-sorry
-(*  using [[simproc del: alpha_lst defined_all]]
-  subgoal by (simp add: eqvt_def lookup_sliceable_graph_aux_def)
-  subgoal by (erule lookup_sliceable_graph.induct) (auto simp: fresh_star_def fresh_at_base)
-                      apply clarify
-  subgoal for P t s y
-    by (rule term.strong_exhaust[of t P "(s, y)"]) (auto simp: fresh_star_def fresh_Pair)
-                      apply (simp_all add: fresh_star_def fresh_at_base)
-  subgoal for x' y' s' t' x t
-    apply (erule Abs_lst1_fcb2'[where c = "(s', y')"])
-       apply (simp_all add: eqvt_at_def fresh_star_def)
-       apply (simp_all add: perm_supp_eq Abs_fresh_iff fresh_Pair)
-    apply (metis fresh_star_def fresh_star_supp_conv supp_perm_eq_test)
-    apply (metis fresh_star_def fresh_star_supp_conv supp_perm_eq_test)
-    done
-  done*)
+  (*using [[simproc del: alpha_lst defined_all]]*)
+  subgoal by (simp add: eqvt_def env_lookup_sliceable_graph_aux_def)
+  subgoal by (erule env_lookup_sliceable_graph.induct) (auto)
+  apply clarify
+  subgoal for P e s
+    by (rule sliceable.strong_exhaust[of s P]) (auto)
+  apply (simp_all)
+done
 nominal_termination (eqvt)
   by lexicographic_order
+
+thm sliceable.strong_exhaust
 
 fun slice :: "'a list \<Rightarrow> int \<Rightarrow> int \<Rightarrow> 'a list" where
   "slice xs n m = take (nat (m - n)) (drop (nat n) xs)"
@@ -133,7 +128,7 @@ subsection\<open>Small-step semantics\<close>
 (* TODO: Which of these is preferable?
     E_PktIn:      "(In, Out, H, Packet x PktIn) \<rightarrow> Bv In" |
     E_PktIn:      "\<lbrakk> p = PktIn \<rbrakk> \<Longrightarrow> (In, Out, H, Packet x p) \<rightarrow> Bv In" |
-  and similarly, keep len call in the rule or make it a premise in E_Pkt*Len?
+  and similarly, keep length call in the rule or make it a premise in E_Pkt*Len?
 *)
 inductive
   exp_small_step :: "(bv \<times> bv \<times> headers \<times> exp) \<Rightarrow> exp \<Rightarrow> bool" ("_ \<rightarrow>\<^sub>e _" [0,50] 50)
@@ -152,17 +147,18 @@ where
                 \<Longrightarrow> (In, Out, H, Concat v\<^sub>1 v\<^sub>2) \<rightarrow>\<^sub>e Bv (b\<^sub>1 @ b\<^sub>2)" |
   E_PktIn:      "(In, Out, H, Packet x PktIn) \<rightarrow>\<^sub>e Bv In" |
   E_PktOut:     "(In, Out, H, Packet x PktOut) \<rightarrow>\<^sub>e Bv Out" |
-  E_PktInLen:   "(In, Out, H, Len x PktIn) \<rightarrow>\<^sub>e Num (len In)" |
-  E_PktOutLen:  "(In, Out, H, Len x PktOut) \<rightarrow>\<^sub>e Num (len Out)" |
+  E_PktInLen:   "(In, Out, H, Len x PktIn) \<rightarrow>\<^sub>e Num (length In)" |
+  E_PktOutLen:  "(In, Out, H, Len x PktOut) \<rightarrow>\<^sub>e Num (length Out)" |
   (*E_Slice1:     "\<lbrakk> (In, Out, H, e\<^sub>1) \<rightarrow>\<^sub>e e\<^sub>1' \<rbrakk>
                 \<Longrightarrow> (In, Out, H, Slice sl e\<^sub>1 e\<^sub>2) \<rightarrow>\<^sub>e Slice sl e\<^sub>1' e\<^sub>2" |
   E_Slice2:     "\<lbrakk> value\<^sub>e v\<^sub>1; (In, Out, H, e\<^sub>2) \<rightarrow>\<^sub>e e\<^sub>2' \<rbrakk>
                 \<Longrightarrow> (In, Out, H, Slice sl v\<^sub>1 e\<^sub>2) \<rightarrow>\<^sub>e Slice sl v\<^sub>1 e\<^sub>2'" | *)
-  E_SlicePktIn: "\<lbrakk> 0 \<le> n \<and> n < m \<and> m \<le> (len In + 1); slice In n m = bs \<rbrakk>
+  E_SlicePktIn: "\<lbrakk> 0 \<le> n \<and> n < m \<and> m \<le> int (length In + 1); slice In n m = bs \<rbrakk>
                 \<Longrightarrow> (In, Out, H, Slice (SlPacket x PktIn) n m) \<rightarrow>\<^sub>e Bv bs" |
-  E_SlicePktOut:"\<lbrakk> 0 \<le> n \<and> n < m \<and> m \<le> (len Out + 1); slice Out n m = bs \<rbrakk>
+  E_SlicePktOut:"\<lbrakk> 0 \<le> n \<and> n < m \<and> m \<le> int (length Out + 1); slice Out n m = bs \<rbrakk>
                 \<Longrightarrow> (In, Out, H, Slice (SlPacket x PktOut) n m) \<rightarrow>\<^sub>e Bv bs" |
-  E_SliceInst:  "\<lbrakk> header_lookup H i = Some bv; 0 \<le> n \<and> n < m \<and> m \<le> (len bv + 1); slice bv n m = bs \<rbrakk>
+  E_SliceInst:  "\<lbrakk> header_lookup H i = Some bv; 0 \<le> n \<and> n < m \<and> m \<le> int (length bv + 1);
+                   slice bv n m = bs \<rbrakk>
                 \<Longrightarrow> (In, Out, H, Slice (SlInstance x i) n m) \<rightarrow>\<^sub>e Bv bs"
 
 inductive formula_small_step :: "(bv \<times> bv \<times> headers \<times> formula) \<Rightarrow> formula \<Rightarrow> bool" ("_ \<rightarrow>\<^sub>f _" [0,50] 50)
@@ -211,11 +207,17 @@ where
   "\<lbrakk>Concat e\<^sub>1 e\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>e = (case (\<lbrakk>e\<^sub>1 in \<epsilon>\<rbrakk>\<^sub>e, \<lbrakk>e\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>e) of
     (Some (VBv bv\<^sub>1), Some (VBv bv\<^sub>2)) \<Rightarrow> Some (VBv (bv\<^sub>1 @ bv\<^sub>2)) | _ \<Rightarrow> None)" |
   "\<lbrakk>Packet x p in \<epsilon>\<rbrakk>\<^sub>e = map_option (\<lambda>bv. VBv bv) (env_lookup_packet \<epsilon> x p)" |
-  "\<lbrakk>Len x p in \<epsilon>\<rbrakk>\<^sub>e = map_option (\<lambda>bv. VNum (len bv)) (env_lookup_packet \<epsilon> x p)" |
+  "\<lbrakk>Len x p in \<epsilon>\<rbrakk>\<^sub>e = map_option (\<lambda>bv. VNum (length bv)) (env_lookup_packet \<epsilon> x p)" |
   "\<lbrakk>Slice sl n m in \<epsilon>\<rbrakk>\<^sub>e = Option.bind (env_lookup_sliceable \<epsilon> sl)
-    (\<lambda>bv. if 0 \<le> n \<and> n < m \<and> m \<le> (len bv + 1) then Some (VBv (slice bv n m)) else None)"
-sorry
-
+    (\<lambda>bv. if 0 \<le> n \<and> n < m \<and> m \<le> int (length bv + 1) then Some (VBv (slice bv n m)) else None)"
+  (*using [[simproc del: alpha_lst defined_all]]*)
+  subgoal by (simp add: eqvt_def exp_sem_graph_aux_def)
+  subgoal by (erule exp_sem_graph.induct) (auto)
+  apply clarify
+  subgoal for P x e
+    by (rule exp.strong_exhaust[of x P]) (auto)
+  apply (simp_all)
+done
 nominal_termination (eqvt)
   by lexicographic_order
 
@@ -231,8 +233,14 @@ where
     Some True \<Rightarrow> \<lbrakk>f\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>f)" |
   "\<lbrakk>Not f\<^sub>1 in \<epsilon>\<rbrakk>\<^sub>f = map_option (\<lambda>b. \<not>b) (\<lbrakk>f\<^sub>1 in \<epsilon>\<rbrakk>\<^sub>f)" |
   "\<lbrakk>IsValid x i in \<epsilon>\<rbrakk>\<^sub>f = map_option (\<lambda>bv. True) (env_lookup_instance \<epsilon> x i)"
-sorry
-
+  (*using [[simproc del: alpha_lst defined_all]]*)
+  subgoal by (simp add: eqvt_def formula_sem_graph_aux_def)
+  subgoal by (erule formula_sem_graph.induct) (auto)
+  apply clarify
+  subgoal for P x e
+    by (rule formula.strong_exhaust[of x P]) (auto)
+  apply (simp_all)
+done
 nominal_termination (eqvt)
   by lexicographic_order
 
