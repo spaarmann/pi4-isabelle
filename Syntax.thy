@@ -13,7 +13,13 @@ text\<open>Bit vectors are essentially boolean lists.
   a place where they're actually needed yet.\<close>
 type_synonym bv = "bool list"
 
-nominal_datatype packet = PktIn | PktOut
+datatype packet = PktIn | PktOut
+
+instantiation packet :: pure begin
+  definition permute_packet :: "perm \<Rightarrow> packet \<Rightarrow> packet" where
+    "permute_packet _ pkt = pkt"
+  instance by standard (auto simp add: permute_packet_def)
+end
 
 datatype field = Field field_name int
 datatype header_type = HeaderType string "field list"
@@ -33,8 +39,6 @@ instantiation val :: pure begin
   instance by standard (auto simp add: permute_val_def)
 end
 
-(* TODO: The implementation indicates that slicing bounds can only be constants, not expressions.
-         Do we want to keep it like that? *)
 nominal_datatype exp =
   Num nat | Bv bv |
   Plus exp exp | Concat exp exp |

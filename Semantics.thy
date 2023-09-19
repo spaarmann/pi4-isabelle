@@ -2,14 +2,9 @@ theory Semantics imports Syntax Utils "HOL-Library.AList" begin
 
 text\<open>For next meeting:
 Questions/Help:
-- Nominal2 proof for lookup_instance and the denot semantics. Can't get the first goal to be solved.
-  Figured it was more productive to keep going for now.
-- See free_constructors packet below.
+
 To talk about:
-- Think I figured out what's going on with expression and formula semantics, see below.
-- See TODOs on the exp small-step semantics.
-- See TODO on exp.
-- Heaps, see text block below.
+
 \<close>
 
 section\<open>Expressions and Formulas\<close>
@@ -58,11 +53,6 @@ subsection\<open>Small-step semantics\<close>
 
 (* TODO: At the moment, we just ignore variables here and assume they must be "heap". Should we
    explicitly encode that somehow, perhaps in the rule assumptions? *)
-(* TODO: Which of these is preferable?
-    E_PktIn:      "(In, Out, H, Packet x PktIn) \<rightarrow> Bv In" |
-    E_PktIn:      "\<lbrakk> p = PktIn \<rbrakk> \<Longrightarrow> (In, Out, H, Packet x p) \<rightarrow> Bv In" |
-  and similarly, keep length call in the rule or make it a premise in E_Pkt*Len?
-*)
 inductive
   exp_small_step :: "(bv \<times> bv \<times> headers \<times> exp) \<Rightarrow> exp \<Rightarrow> bool" ("_ \<rightarrow>\<^sub>e _" [0,50] 50)
 where
@@ -70,22 +60,16 @@ where
                 \<Longrightarrow> (In, Out, H, Plus e\<^sub>1 e\<^sub>2) \<rightarrow>\<^sub>e Plus e\<^sub>1' e\<^sub>2" |
   E_Plus2:      "\<lbrakk> value\<^sub>e v\<^sub>1; (In, Out, H, e\<^sub>2) \<rightarrow>\<^sub>e e\<^sub>2' \<rbrakk>
                 \<Longrightarrow> (In, Out, H, Plus v\<^sub>1 e\<^sub>2) \<rightarrow>\<^sub>e Plus v\<^sub>1 e\<^sub>2'" |
-  E_Plus:       "\<lbrakk> v\<^sub>1 = Num n\<^sub>1; v\<^sub>2 = Num n\<^sub>2 \<rbrakk>
-                \<Longrightarrow> (In, Out, H, Plus v\<^sub>1 v\<^sub>2) \<rightarrow>\<^sub>e Num (n\<^sub>1 + n\<^sub>2)" |
+  E_Plus:       "(In, Out, H, Plus (Num n\<^sub>1) (Num n\<^sub>2)) \<rightarrow>\<^sub>e Num (n\<^sub>1 + n\<^sub>2)" |
   E_Concat1:    "\<lbrakk> (In, Out, H, e\<^sub>1) \<rightarrow>\<^sub>e e\<^sub>1' \<rbrakk>
                 \<Longrightarrow> (In, Out, H, Concat e\<^sub>1 e\<^sub>2) \<rightarrow>\<^sub>e Concat e\<^sub>1 e\<^sub>2" |
   E_Concat2:    "\<lbrakk> value\<^sub>e v\<^sub>1; (In, Out, H, e\<^sub>2) \<rightarrow>\<^sub>e e\<^sub>2' \<rbrakk>
                 \<Longrightarrow> (In, Out, H, Concat v\<^sub>1 e\<^sub>2) \<rightarrow>\<^sub>e Concat v\<^sub>1 e\<^sub>2'" |
-  E_Concat:     "\<lbrakk> v\<^sub>1 = Bv b\<^sub>1; v\<^sub>2 = Bv b\<^sub>2 \<rbrakk>
-                \<Longrightarrow> (In, Out, H, Concat v\<^sub>1 v\<^sub>2) \<rightarrow>\<^sub>e Bv (b\<^sub>1 @ b\<^sub>2)" |
+  E_Concat:     "(In, Out, H, Concat (Bv b\<^sub>1) (Bv b\<^sub>2)) \<rightarrow>\<^sub>e Bv (b\<^sub>1 @ b\<^sub>2)" |
   E_PktIn:      "(In, Out, H, Packet x PktIn) \<rightarrow>\<^sub>e Bv In" |
   E_PktOut:     "(In, Out, H, Packet x PktOut) \<rightarrow>\<^sub>e Bv Out" |
   E_PktInLen:   "(In, Out, H, Len x PktIn) \<rightarrow>\<^sub>e Num (length In)" |
   E_PktOutLen:  "(In, Out, H, Len x PktOut) \<rightarrow>\<^sub>e Num (length Out)" |
-  (*E_Slice1:     "\<lbrakk> (In, Out, H, e\<^sub>1) \<rightarrow>\<^sub>e e\<^sub>1' \<rbrakk>
-                \<Longrightarrow> (In, Out, H, Slice sl e\<^sub>1 e\<^sub>2) \<rightarrow>\<^sub>e Slice sl e\<^sub>1' e\<^sub>2" |
-  E_Slice2:     "\<lbrakk> value\<^sub>e v\<^sub>1; (In, Out, H, e\<^sub>2) \<rightarrow>\<^sub>e e\<^sub>2' \<rbrakk>
-                \<Longrightarrow> (In, Out, H, Slice sl v\<^sub>1 e\<^sub>2) \<rightarrow>\<^sub>e Slice sl v\<^sub>1 e\<^sub>2'" | *)
   E_SlicePktIn: "\<lbrakk> 0 \<le> n \<and> n < m \<and> m \<le> int (length In + 1); slice In n m = bs \<rbrakk>
                 \<Longrightarrow> (In, Out, H, Slice (SlPacket x PktIn) n m) \<rightarrow>\<^sub>e Bv bs" |
   E_SlicePktOut:"\<lbrakk> 0 \<le> n \<and> n < m \<and> m \<le> int (length Out + 1); slice Out n m = bs \<rbrakk>
@@ -108,10 +92,10 @@ where
                 \<Longrightarrow> (In, Out, H, Gt e\<^sub>1 e\<^sub>2) \<rightarrow>\<^sub>f Gt e\<^sub>1' e\<^sub>2" |
   F_Gt2:        "\<lbrakk> value\<^sub>e v\<^sub>1; (In, Out, H, e\<^sub>2) \<rightarrow>\<^sub>e e\<^sub>2' \<rbrakk>
                 \<Longrightarrow> (In, Out, H, Gt v\<^sub>1 e\<^sub>2) \<rightarrow>\<^sub>f Gt v\<^sub>1 e\<^sub>2'" |
-  F_GtTrue:     "\<lbrakk> v\<^sub>1 = Num n\<^sub>1; v\<^sub>2 = Num n\<^sub>2; n\<^sub>1 > n\<^sub>2 \<rbrakk>
-                \<Longrightarrow> (In, Out, H, Gt v\<^sub>1 v\<^sub>2) \<rightarrow>\<^sub>f FTrue" |
-  F_GtFalse:    "\<lbrakk> v\<^sub>1 = Num n\<^sub>1; v\<^sub>2 = Num n\<^sub>2; n\<^sub>1 \<le> n\<^sub>2 \<rbrakk>
-                \<Longrightarrow> (In, Out, H, Gt v\<^sub>1 v\<^sub>2) \<rightarrow>\<^sub>f FFalse" |
+  F_GtTrue:     "\<lbrakk> n\<^sub>1 > n\<^sub>2 \<rbrakk>
+                \<Longrightarrow> (In, Out, H, Gt (Num n\<^sub>1) (Num n\<^sub>2)) \<rightarrow>\<^sub>f FTrue" |
+  F_GtFalse:    "\<lbrakk> n\<^sub>1 \<le> n\<^sub>2 \<rbrakk>
+                \<Longrightarrow> (In, Out, H, Gt (Num n\<^sub>1) (Num n\<^sub>2)) \<rightarrow>\<^sub>f FFalse" |
   F_And1:       "\<lbrakk> (In, Out, H, f\<^sub>1) \<rightarrow>\<^sub>f f\<^sub>1' \<rbrakk>
                 \<Longrightarrow> (In, Out, H, And f\<^sub>1 f\<^sub>2) \<rightarrow>\<^sub>f And f\<^sub>1' f\<^sub>2" |
   F_AndTrue:    "\<lbrakk> t\<^sub>1 = FTrue \<rbrakk>
@@ -120,10 +104,8 @@ where
                 \<Longrightarrow> (In, Out, H, And t\<^sub>1 f\<^sub>2) \<rightarrow>\<^sub>f FFalse" |
   F_Not1:       "\<lbrakk> (In, Out, H, f\<^sub>1) \<rightarrow>\<^sub>f f\<^sub>1' \<rbrakk>
                 \<Longrightarrow> (In, Out, H, Not f\<^sub>1) \<rightarrow>\<^sub>f f\<^sub>1'" |
-  F_NotTrue:    "\<lbrakk> t\<^sub>1 = FTrue \<rbrakk>
-                \<Longrightarrow> (In, Out, H, Not t\<^sub>1) \<rightarrow>\<^sub>f FFalse" |
-  F_NotFalse:   "\<lbrakk> t\<^sub>1 = FFalse \<rbrakk>
-                \<Longrightarrow> (In, Out, H, Not t\<^sub>1) \<rightarrow>\<^sub>f FTrue" |
+  F_NotTrue:    "(In, Out, H, Not FTrue) \<rightarrow>\<^sub>f FFalse" |
+  F_NotFalse:   "(In, Out, H, Not FFalse) \<rightarrow>\<^sub>f FTrue" |
   F_IsValidTrue:"\<lbrakk> header_lookup H i = Some _ \<rbrakk>
                 \<Longrightarrow> (In, Out, H, IsValid x i) \<rightarrow>\<^sub>f FTrue" |
   F_IsValidFalse:"\<lbrakk> header_lookup H i = None \<rbrakk>
@@ -143,7 +125,6 @@ where
   "\<lbrakk>Len x p in \<epsilon>\<rbrakk>\<^sub>e = map_option (\<lambda>bv. VNum (length bv)) (env_lookup_packet \<epsilon> x p)" |
   "\<lbrakk>Slice sl n m in \<epsilon>\<rbrakk>\<^sub>e = Option.bind (env_lookup_sliceable \<epsilon> sl)
     (\<lambda>bv. if 0 \<le> n \<and> n < m \<and> m \<le> int (length bv + 1) then Some (VBv (slice bv n m)) else None)"
-  (*using [[simproc del: alpha_lst defined_all]]*)
   subgoal by (simp add: eqvt_def exp_sem_graph_aux_def)
   subgoal by (erule exp_sem_graph.induct) (auto)
   apply clarify
@@ -166,7 +147,6 @@ where
     Some True \<Rightarrow> \<lbrakk>f\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>f)" |
   "\<lbrakk>Not f\<^sub>1 in \<epsilon>\<rbrakk>\<^sub>f = map_option (\<lambda>b. \<not>b) (\<lbrakk>f\<^sub>1 in \<epsilon>\<rbrakk>\<^sub>f)" |
   "\<lbrakk>IsValid x i in \<epsilon>\<rbrakk>\<^sub>f = map_option (\<lambda>bv. True) (env_lookup_instance \<epsilon> x i)"
-  (*using [[simproc del: alpha_lst defined_all]]*)
   subgoal by (simp add: eqvt_def formula_sem_graph_aux_def)
   subgoal by (erule formula_sem_graph.induct) (auto)
   apply clarify
@@ -189,16 +169,14 @@ where
   C_Seq:      "HT \<turnstile> (In, Out, H, Seq Skip c) \<rightarrow> (In, Out, H, c)" |
   C_If1:      "\<lbrakk> (In, Out, H, f) \<rightarrow>\<^sub>f f' \<rbrakk>
               \<Longrightarrow> HT \<turnstile> (In, Out, H, If f c\<^sub>1 c\<^sub>2) \<rightarrow> (In, Out, H, If f' c\<^sub>1 c\<^sub>2)" |
-  C_IfTrue:   "\<lbrakk> t\<^sub>1 = FTrue \<rbrakk>
-              \<Longrightarrow> HT \<turnstile> (In, Out, H, If t\<^sub>1 c\<^sub>1 c\<^sub>2) \<rightarrow> (In, Out, H, c\<^sub>1)" |
-  C_IfFalse:  "\<lbrakk> t\<^sub>1 = FFalse \<rbrakk>
-              \<Longrightarrow> HT \<turnstile> (In, Out, H, If t\<^sub>1 c\<^sub>1 c\<^sub>2) \<rightarrow> (In, Out, H, c\<^sub>2)" |
+  C_IfTrue:   "HT \<turnstile> (In, Out, H, If FTrue c\<^sub>1 c\<^sub>2) \<rightarrow> (In, Out, H, c\<^sub>1)" |
+  C_IfFalse:  "HT \<turnstile> (In, Out, H, If FFalse c\<^sub>1 c\<^sub>2) \<rightarrow> (In, Out, H, c\<^sub>2)" |
   C_Assign1:  "\<lbrakk> (In, Out, H, e) \<rightarrow>\<^sub>e e' \<rbrakk>
               \<Longrightarrow> HT \<turnstile> (In, Out, H, Assign i f e) \<rightarrow> (In, Out, H, Assign i f e')" |
-  C_Assign:   "\<lbrakk> v = Bv bs; header_lookup H i = Some inst; HT i = ht;
+  C_Assign:   "\<lbrakk> header_lookup H i = Some inst; HT i = ht;
                  header_field_to_range ht f = (n, m); splice inst n m bs = bs';
                  H' = header_update H i bs' \<rbrakk>
-              \<Longrightarrow> HT \<turnstile> (In, Out, H, Assign i f v) \<rightarrow> (In, Out, H', Skip)" |
+              \<Longrightarrow> HT \<turnstile> (In, Out, H, Assign i f (Bv bs)) \<rightarrow> (In, Out, H', Skip)" |
   (* These 3 need infrastructure for (de)serializing, initial value based on instance type *)
   (* Extract *)
   (* Remit *)
