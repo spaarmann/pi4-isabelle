@@ -47,6 +47,10 @@ What forms do we actually have?
 So let's model the last two as mapping to bvs as well, with names just desugaring into slices? We
 have the HT that gives us types for each instanc, so can just look up the range corresponding to a
 name.
+
+TODO: That might be the wrong choice. Typing rule T-Mod is very explicitly defined in terms of
+fields being equal or not; translating that to use ranges/slices instead might be much more annoying
+than just using the record-like model all the time.
 \<close>
 
 subsection\<open>Small-step semantics\<close>
