@@ -78,6 +78,12 @@ where
                    slice bv n m = bs \<rbrakk>
                 \<Longrightarrow> (In, Out, H, Slice (SlInstance x i) n m) \<rightarrow>\<^sub>e Bv bs"
 
+inductive exp_small_steps :: "(bv \<times> bv \<times> headers \<times> exp) \<Rightarrow> exp \<Rightarrow> bool" ("_ \<rightarrow>\<^sub>e* _" [0,50] 50)
+where
+  ES_Id:     "(In, Out, H, e) \<rightarrow>\<^sub>e* e" |
+  ES_Step:   "\<lbrakk> (In, Out, H, e) \<rightarrow>\<^sub>e e''; (In, Out, H, e'') \<rightarrow>\<^sub>e* e' \<rbrakk>
+             \<Longrightarrow> (In, Out, H, e) \<rightarrow>\<^sub>e* e'"
+
 inductive formula_small_step :: "(bv \<times> bv \<times> headers \<times> formula) \<Rightarrow> formula \<Rightarrow> bool" ("_ \<rightarrow>\<^sub>f _" [0,50] 50)
 where
   F_Eq1:        "\<lbrakk> (In, Out, H, e\<^sub>1) \<rightarrow>\<^sub>e e\<^sub>1' \<rbrakk>
@@ -110,6 +116,12 @@ where
                 \<Longrightarrow> (In, Out, H, IsValid x i) \<rightarrow>\<^sub>f FTrue" |
   F_IsValidFalse:"\<lbrakk> header_lookup H i = None \<rbrakk>
                 \<Longrightarrow> (In, Out, H, IsValid x i) \<rightarrow>\<^sub>f FFalse"
+
+inductive formula_small_steps :: "(bv \<times> bv \<times> headers \<times> formula) \<Rightarrow> formula \<Rightarrow> bool" ("_ \<rightarrow>\<^sub>f* _" [0,50] 50)
+where
+  FS_Id:     "(In, Out, H, f) \<rightarrow>\<^sub>f* f" |
+  FS_Step:   "\<lbrakk> (In, Out, H, f) \<rightarrow>\<^sub>f f''; (In, Out, H, f'') \<rightarrow>\<^sub>f* f' \<rbrakk>
+             \<Longrightarrow> (In, Out, H, f) \<rightarrow>\<^sub>f* f'"
 
 subsection\<open>Denotational semantics\<close>
 
@@ -186,5 +198,13 @@ where
   C_Reset:    "\<lbrakk> In' = Out @ In \<rbrakk>
               \<Longrightarrow> HT \<turnstile> (In, Out, H, Reset) \<rightarrow> (In', [], empty_headers, Skip)" |
   C_Ascribe:  "HT \<turnstile> (In, Out, H, Ascribe c ty) \<rightarrow> (In, Out, H, c)"
+
+inductive
+  small_steps :: "header_table \<Rightarrow> (bv \<times> bv \<times> headers \<times> cmd) \<Rightarrow> (bv \<times> bv \<times> headers \<times> cmd) \<Rightarrow> bool"
+  ("(1_/ \<turnstile>/ (_ \<rightarrow>*/ _))" [50,0,50] 50)
+where
+  CS_Id:     "HT \<turnstile> (In, Out, H, c) \<rightarrow>* (In, Out, H, c)" |
+  CS_Step:   "\<lbrakk> HT \<turnstile> t \<rightarrow> t''; HT \<turnstile> t'' \<rightarrow>* t' \<rbrakk>
+             \<Longrightarrow> HT \<turnstile> t \<rightarrow>* t'"
 
 end
