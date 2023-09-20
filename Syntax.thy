@@ -21,7 +21,7 @@ instantiation packet :: pure begin
   instance by standard (auto simp add: permute_packet_def)
 end
 
-datatype field = Field field_name int
+datatype field = Field field_name nat
 datatype header_type = HeaderType string "field list"
 type_synonym header_table = "instanc \<Rightarrow> header_type" (* Should we have header_type option here? *)
 
@@ -43,7 +43,7 @@ nominal_datatype exp =
   Num nat | Bv bv |
   Plus exp exp | Concat exp exp |
   Packet var packet | Len var packet |
-  Slice sliceable int int
+  Slice sliceable nat nat
 
 nominal_datatype formula =
   FTrue | FFalse |

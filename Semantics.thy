@@ -70,11 +70,11 @@ where
   E_PktOut:     "(In, Out, H, Packet x PktOut) \<rightarrow>\<^sub>e Bv Out" |
   E_PktInLen:   "(In, Out, H, Len x PktIn) \<rightarrow>\<^sub>e Num (length In)" |
   E_PktOutLen:  "(In, Out, H, Len x PktOut) \<rightarrow>\<^sub>e Num (length Out)" |
-  E_SlicePktIn: "\<lbrakk> 0 \<le> n \<and> n < m \<and> m \<le> int (length In + 1); slice In n m = bs \<rbrakk>
+  E_SlicePktIn: "\<lbrakk> 0 \<le> n \<and> n < m \<and> m \<le> length In + 1; slice In n m = bs \<rbrakk>
                 \<Longrightarrow> (In, Out, H, Slice (SlPacket x PktIn) n m) \<rightarrow>\<^sub>e Bv bs" |
-  E_SlicePktOut:"\<lbrakk> 0 \<le> n \<and> n < m \<and> m \<le> int (length Out + 1); slice Out n m = bs \<rbrakk>
+  E_SlicePktOut:"\<lbrakk> 0 \<le> n \<and> n < m \<and> m \<le> length Out + 1; slice Out n m = bs \<rbrakk>
                 \<Longrightarrow> (In, Out, H, Slice (SlPacket x PktOut) n m) \<rightarrow>\<^sub>e Bv bs" |
-  E_SliceInst:  "\<lbrakk> header_lookup H i = Some bv; 0 \<le> n \<and> n < m \<and> m \<le> int (length bv + 1);
+  E_SliceInst:  "\<lbrakk> header_lookup H i = Some bv; 0 \<le> n \<and> n < m \<and> m \<le> length bv + 1;
                    slice bv n m = bs \<rbrakk>
                 \<Longrightarrow> (In, Out, H, Slice (SlInstance x i) n m) \<rightarrow>\<^sub>e Bv bs"
 
@@ -124,7 +124,7 @@ where
   "\<lbrakk>Packet x p in \<epsilon>\<rbrakk>\<^sub>e = map_option (\<lambda>bv. VBv bv) (env_lookup_packet \<epsilon> x p)" |
   "\<lbrakk>Len x p in \<epsilon>\<rbrakk>\<^sub>e = map_option (\<lambda>bv. VNum (length bv)) (env_lookup_packet \<epsilon> x p)" |
   "\<lbrakk>Slice sl n m in \<epsilon>\<rbrakk>\<^sub>e = Option.bind (env_lookup_sliceable \<epsilon> sl)
-    (\<lambda>bv. if 0 \<le> n \<and> n < m \<and> m \<le> int (length bv + 1) then Some (VBv (slice bv n m)) else None)"
+    (\<lambda>bv. if 0 \<le> n \<and> n < m \<and> m \<le> length bv + 1 then Some (VBv (slice bv n m)) else None)"
   subgoal by (simp add: eqvt_def exp_sem_graph_aux_def)
   subgoal by (erule exp_sem_graph.induct) (auto)
   apply clarify
@@ -174,13 +174,15 @@ where
   C_Assign1:  "\<lbrakk> (In, Out, H, e) \<rightarrow>\<^sub>e e' \<rbrakk>
               \<Longrightarrow> HT \<turnstile> (In, Out, H, Assign i f e) \<rightarrow> (In, Out, H, Assign i f e')" |
   C_Assign:   "\<lbrakk> header_lookup H i = Some inst; HT i = ht;
-                 header_field_to_range ht f = (n, m); splice inst n m bs = bs';
-                 H' = header_update H i bs' \<rbrakk>
-              \<Longrightarrow> HT \<turnstile> (In, Out, H, Assign i f (Bv bs)) \<rightarrow> (In, Out, H', Skip)" |
-  (* These 3 need infrastructure for (de)serializing, initial value based on instance type *)
-  (* Extract *)
-  (* Remit *)
-  (* Add *)
+                 header_field_to_range ht f = (n, m); splice inst n m bv = bv';
+                 H' = header_update H i bv' \<rbrakk>
+              \<Longrightarrow> HT \<turnstile> (In, Out, H, Assign i f (Bv bv)) \<rightarrow> (In, Out, H', Skip)" |
+  C_Extract:  "\<lbrakk> HT i = ht; deserialize_header ht In = (In', bv); H' = header_update H i bv \<rbrakk>
+              \<Longrightarrow> HT \<turnstile> (In, Out, H, Extract i) \<rightarrow> (In', Out, H', Skip)" |
+  C_Remit:    "\<lbrakk> HT i = ht; serialize_header H i = Some bv \<rbrakk>
+              \<Longrightarrow> HT \<turnstile> (In, Out, H, Remit i) \<rightarrow> (In, Out @ bv, H, Skip)" |
+  C_Add:      "\<lbrakk> HT i = ht; header_lookup H i = None; init_header ht = bv; H' = header_update H i bv \<rbrakk>
+              \<Longrightarrow> HT \<turnstile> (In, Out, H, Add i) \<rightarrow> (In, Out, H', Skip)" |
   C_Reset:    "\<lbrakk> In' = Out @ In \<rbrakk>
               \<Longrightarrow> HT \<turnstile> (In, Out, H, Reset) \<rightarrow> (In', [], empty_headers, Skip)" |
   C_Ascribe:  "HT \<turnstile> (In, Out, H, Ascribe c ty) \<rightarrow> (In, Out, H, c)"

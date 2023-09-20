@@ -1,11 +1,11 @@
 theory Utils imports Syntax begin
 
-fun slice :: "'a list \<Rightarrow> int \<Rightarrow> int \<Rightarrow> 'a list" where
-  "slice xs n m = take (nat (m - n)) (drop (nat n) xs)"
+fun slice :: "'a list \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> 'a list" where
+  "slice xs n m = take (m - n) (drop n xs)"
 
 text\<open>Replaces [n:m) in the first input list with the second list.\<close>
-fun splice :: "'a list \<Rightarrow> int \<Rightarrow> int \<Rightarrow> 'a list \<Rightarrow> 'a list" where
-  "splice xs n m ins = (slice xs 0 n) @ ins @ (slice xs m (int (length xs)))"
+fun splice :: "'a list \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> 'a list \<Rightarrow> 'a list" where
+  "splice xs n m ins = (slice xs 0 n) @ ins @ (slice xs m (length xs))"
 
 section\<open>Nominal2 Lemmas\<close>
 
@@ -33,13 +33,25 @@ fun header_lookup :: "headers \<Rightarrow> instanc \<Rightarrow> bv option" whe
 fun header_update :: "headers \<Rightarrow> instanc \<Rightarrow> bv \<Rightarrow> headers" where
   "header_update (Headers h) i bs = Headers (h(i := Some bs))"
 
-fun header_field_to_range_helper :: "int \<Rightarrow> field list \<Rightarrow> field_name \<Rightarrow> (int \<times> int)" where
+fun header_field_to_range_helper :: "nat \<Rightarrow> field list \<Rightarrow> field_name \<Rightarrow> (nat \<times> nat)" where
   "header_field_to_range_helper acc ((Field fn fl)#fs) tgt = (if fn = tgt then (acc, acc + fl)
     else header_field_to_range_helper (acc + fl) fs tgt)" |
   "header_field_to_range_helper acc [] tgt = undefined"
 
-fun header_field_to_range :: "header_type \<Rightarrow> field_name \<Rightarrow> (int \<times> int)" where
+fun header_field_to_range :: "header_type \<Rightarrow> field_name \<Rightarrow> (nat \<times> nat)" where
   "header_field_to_range (HeaderType _ fs) tgt = header_field_to_range_helper 0 fs tgt"
+
+fun header_length :: "header_type \<Rightarrow> nat" where
+  "header_length (HeaderType _ fs) = (\<Sum>f\<leftarrow>fs. case f of field.Field x fl \<Rightarrow> fl)"
+
+fun init_header :: "header_type \<Rightarrow> bv" where
+  "init_header ht = replicate (header_length ht) False"
+
+fun serialize_header :: "headers \<Rightarrow> instanc \<Rightarrow> bv option" where
+  "serialize_header (Headers h) i = h i"
+
+fun deserialize_header :: "header_type \<Rightarrow> bv \<Rightarrow> (bv \<times> bv)" where
+  "deserialize_header ht In = (let len = header_length ht in (take len In, drop len In))"
 
 section\<open>Heaps\<close>
 
