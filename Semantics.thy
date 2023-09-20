@@ -4,7 +4,8 @@ text\<open>For next meeting:
 Questions/Help:
 
 To talk about:
-
+- T-Mod premise formulas use \<forall> qualifiers, which are not actually a thing in the formula syntax.
+  I suppose we just "desugar" this into an AND over the finite number of set elements?
 \<close>
 
 section\<open>Expressions and Formulas\<close>
