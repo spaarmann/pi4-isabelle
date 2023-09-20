@@ -173,15 +173,15 @@ where
   C_IfFalse:  "HT \<turnstile> (In, Out, H, If FFalse c\<^sub>1 c\<^sub>2) \<rightarrow> (In, Out, H, c\<^sub>2)" |
   C_Assign1:  "\<lbrakk> (In, Out, H, e) \<rightarrow>\<^sub>e e' \<rbrakk>
               \<Longrightarrow> HT \<turnstile> (In, Out, H, Assign i f e) \<rightarrow> (In, Out, H, Assign i f e')" |
-  C_Assign:   "\<lbrakk> header_lookup H i = Some inst; HT i = ht;
-                 header_field_to_range ht f = (n, m); splice inst n m bv = bv';
+  C_Assign:   "\<lbrakk> header_lookup H i = Some inst; HT i = Some \<eta>;
+                 header_field_to_range \<eta> f = (n, m); splice inst n m bv = bv';
                  H' = header_update H i bv' \<rbrakk>
               \<Longrightarrow> HT \<turnstile> (In, Out, H, Assign i f (Bv bv)) \<rightarrow> (In, Out, H', Skip)" |
-  C_Extract:  "\<lbrakk> HT i = ht; deserialize_header ht In = (In', bv); H' = header_update H i bv \<rbrakk>
+  C_Extract:  "\<lbrakk> HT i = Some \<eta>; deserialize_header \<eta> In = (In', bv); H' = header_update H i bv \<rbrakk>
               \<Longrightarrow> HT \<turnstile> (In, Out, H, Extract i) \<rightarrow> (In', Out, H', Skip)" |
-  C_Remit:    "\<lbrakk> HT i = ht; serialize_header H i = Some bv \<rbrakk>
+  C_Remit:    "\<lbrakk> HT i = Some \<eta>; serialize_header H i = Some bv \<rbrakk>
               \<Longrightarrow> HT \<turnstile> (In, Out, H, Remit i) \<rightarrow> (In, Out @ bv, H, Skip)" |
-  C_Add:      "\<lbrakk> HT i = ht; header_lookup H i = None; init_header ht = bv; H' = header_update H i bv \<rbrakk>
+  C_Add:      "\<lbrakk> HT i = Some \<eta>; header_lookup H i = None; init_header \<eta> = bv; H' = header_update H i bv \<rbrakk>
               \<Longrightarrow> HT \<turnstile> (In, Out, H, Add i) \<rightarrow> (In, Out, H', Skip)" |
   C_Reset:    "\<lbrakk> In' = Out @ In \<rbrakk>
               \<Longrightarrow> HT \<turnstile> (In, Out, H, Reset) \<rightarrow> (In', [], empty_headers, Skip)" |

@@ -23,7 +23,7 @@ end
 
 datatype field = Field field_name nat
 datatype header_type = HeaderType string "field list"
-type_synonym header_table = "instanc \<Rightarrow> header_type" (* Should we have header_type option here? *)
+type_synonym header_table = "instanc \<Rightarrow> header_type option"
 
 datatype headers = Headers "instanc \<Rightarrow> bv option"
 datatype heap = Heap bv bv headers

@@ -45,13 +45,13 @@ fun header_length :: "header_type \<Rightarrow> nat" where
   "header_length (HeaderType _ fs) = (\<Sum>f\<leftarrow>fs. case f of field.Field x fl \<Rightarrow> fl)"
 
 fun init_header :: "header_type \<Rightarrow> bv" where
-  "init_header ht = replicate (header_length ht) False"
+  "init_header \<eta> = replicate (header_length \<eta>) False"
 
 fun serialize_header :: "headers \<Rightarrow> instanc \<Rightarrow> bv option" where
   "serialize_header (Headers h) i = h i"
 
 fun deserialize_header :: "header_type \<Rightarrow> bv \<Rightarrow> (bv \<times> bv)" where
-  "deserialize_header ht In = (let len = header_length ht in (take len In, drop len In))"
+  "deserialize_header \<eta> In = (let len = header_length \<eta> in (take len In, drop len In))"
 
 section\<open>Heaps\<close>
 
