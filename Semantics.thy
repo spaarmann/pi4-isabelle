@@ -152,14 +152,16 @@ done
 nominal_termination (eqvt)
   by lexicographic_order
 
+text\<open>Unlike for the small-step semantics, semantic expression equality and comparison is explicitly
+defined to be False when the semantics of either operand are undefined. (See section 3.3, p. 9)\<close>
 nominal_function formula_sem :: "formula \<Rightarrow> env \<Rightarrow> bool option" ("\<lbrakk>_ in _\<rbrakk>\<^sub>f" [50,60] 50)
 where
   "\<lbrakk>FTrue in \<epsilon>\<rbrakk>\<^sub>f = Some True" |
   "\<lbrakk>FFalse in \<epsilon>\<rbrakk>\<^sub>f = Some False" |
   "\<lbrakk>Eq e\<^sub>1 e\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>f = (case (\<lbrakk>e\<^sub>1 in \<epsilon>\<rbrakk>\<^sub>e, \<lbrakk>e\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>e) of
-    (Some v\<^sub>1, Some v\<^sub>2) \<Rightarrow> Some (v\<^sub>1 = v\<^sub>2) | _ \<Rightarrow> None)" |
+    (Some v\<^sub>1, Some v\<^sub>2) \<Rightarrow> Some (v\<^sub>1 = v\<^sub>2) | _ \<Rightarrow> Some False)" |
   "\<lbrakk>Gt e\<^sub>1 e\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>f = (case (\<lbrakk>e\<^sub>1 in \<epsilon>\<rbrakk>\<^sub>e, \<lbrakk>e\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>e) of
-    (Some (VNum n\<^sub>1), Some (VNum n\<^sub>2)) \<Rightarrow> Some (n\<^sub>1 > n\<^sub>2) | _ \<Rightarrow> None)" |
+    (Some (VNum n\<^sub>1), Some (VNum n\<^sub>2)) \<Rightarrow> Some (n\<^sub>1 > n\<^sub>2) | _ \<Rightarrow> Some False)" |
   "\<lbrakk>And f\<^sub>1 f\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>f = (case \<lbrakk>f\<^sub>1 in \<epsilon>\<rbrakk>\<^sub>f of None \<Rightarrow> None | Some False \<Rightarrow> Some False |
     Some True \<Rightarrow> \<lbrakk>f\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>f)" |
   "\<lbrakk>Not f\<^sub>1 in \<epsilon>\<rbrakk>\<^sub>f = map_option (\<lambda>b. \<not>b) (\<lbrakk>f\<^sub>1 in \<epsilon>\<rbrakk>\<^sub>f)" |
