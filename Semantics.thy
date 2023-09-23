@@ -6,6 +6,10 @@ Questions/Help:
 To talk about:
 - T-Mod premise formulas use \<forall> qualifiers, which are not actually a thing in the formula syntax.
   I suppose we just "desugar" this into an AND over the finite number of set elements?
+- What's up with subtyping being defined in terms of one or two environments on p. 12-13?
+- Figured out where "bit variables" appear: For chomp & heapRef. If I understand it correctly,
+  chomp introduces placeholder variables into expressions, and then heapRef replaces them with
+  concrete values again.
 \<close>
 
 section\<open>Expressions and Formulas\<close>
@@ -51,7 +55,8 @@ name.
 
 TODO: That might be the wrong choice. Typing rule T-Mod is very explicitly defined in terms of
 fields being equal or not; translating that to use ranges/slices instead might be much more annoying
-than just using the record-like model all the time.
+than just using the record-like model all the time. Or maybe it is fine? We could just generate a
+slice equality for each field.
 \<close>
 
 subsection\<open>Small-step semantics\<close>
@@ -71,17 +76,17 @@ where
   E_Concat2:    "\<lbrakk> value\<^sub>e v\<^sub>1; (In, Out, H, e\<^sub>2) \<rightarrow>\<^sub>e e\<^sub>2' \<rbrakk>
                 \<Longrightarrow> (In, Out, H, Concat v\<^sub>1 e\<^sub>2) \<rightarrow>\<^sub>e Concat v\<^sub>1 e\<^sub>2'" |
   E_Concat:     "(In, Out, H, Concat (Bv b\<^sub>1) (Bv b\<^sub>2)) \<rightarrow>\<^sub>e Bv (b\<^sub>1 @ b\<^sub>2)" |
-  E_PktIn:      "(In, Out, H, Packet x PktIn) \<rightarrow>\<^sub>e Bv In" |
-  E_PktOut:     "(In, Out, H, Packet x PktOut) \<rightarrow>\<^sub>e Bv Out" |
-  E_PktInLen:   "(In, Out, H, Len x PktIn) \<rightarrow>\<^sub>e Num (length In)" |
-  E_PktOutLen:  "(In, Out, H, Len x PktOut) \<rightarrow>\<^sub>e Num (length Out)" |
+  E_PktIn:      "(In, Out, H, Packet var_heap PktIn) \<rightarrow>\<^sub>e Bv In" |
+  E_PktOut:     "(In, Out, H, Packet var_heap PktOut) \<rightarrow>\<^sub>e Bv Out" |
+  E_PktInLen:   "(In, Out, H, Len var_heap PktIn) \<rightarrow>\<^sub>e Num (length In)" |
+  E_PktOutLen:  "(In, Out, H, Len var_heap PktOut) \<rightarrow>\<^sub>e Num (length Out)" |
   E_SlicePktIn: "\<lbrakk> 0 \<le> n \<and> n < m \<and> m \<le> length In + 1; slice In n m = bs \<rbrakk>
-                \<Longrightarrow> (In, Out, H, Slice (SlPacket x PktIn) n m) \<rightarrow>\<^sub>e Bv bs" |
+                \<Longrightarrow> (In, Out, H, Slice (SlPacket var_heap PktIn) n m) \<rightarrow>\<^sub>e Bv bs" |
   E_SlicePktOut:"\<lbrakk> 0 \<le> n \<and> n < m \<and> m \<le> length Out + 1; slice Out n m = bs \<rbrakk>
-                \<Longrightarrow> (In, Out, H, Slice (SlPacket x PktOut) n m) \<rightarrow>\<^sub>e Bv bs" |
+                \<Longrightarrow> (In, Out, H, Slice (SlPacket var_heap PktOut) n m) \<rightarrow>\<^sub>e Bv bs" |
   E_SliceInst:  "\<lbrakk> header_lookup H i = Some bv; 0 \<le> n \<and> n < m \<and> m \<le> length bv + 1;
                    slice bv n m = bs \<rbrakk>
-                \<Longrightarrow> (In, Out, H, Slice (SlInstance x i) n m) \<rightarrow>\<^sub>e Bv bs"
+                \<Longrightarrow> (In, Out, H, Slice (SlInstance var_heap i) n m) \<rightarrow>\<^sub>e Bv bs"
 
 inductive exp_small_steps :: "(bv \<times> bv \<times> headers \<times> exp) \<Rightarrow> exp \<Rightarrow> bool" ("_ \<rightarrow>\<^sub>e* _" [0,50] 50)
 where
@@ -120,7 +125,7 @@ where
   F_IsValidTrue:"\<lbrakk> header_lookup H i = Some _ \<rbrakk>
                 \<Longrightarrow> (In, Out, H, IsValid x i) \<rightarrow>\<^sub>f FTrue" |
   F_IsValidFalse:"\<lbrakk> header_lookup H i = None \<rbrakk>
-                \<Longrightarrow> (In, Out, H, IsValid x i) \<rightarrow>\<^sub>f FFalse"
+                \<Longrightarrow> (In, Out, H, IsValid var_heap i) \<rightarrow>\<^sub>f FFalse"
 
 inductive formula_small_steps :: "(bv \<times> bv \<times> headers \<times> formula) \<Rightarrow> formula \<Rightarrow> bool" ("_ \<rightarrow>\<^sub>f* _" [0,50] 50)
 where

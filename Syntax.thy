@@ -3,6 +3,8 @@ theory Syntax imports Nominal2.Nominal2 begin
 section\<open>General Definitions\<close>
 
 atom_decl var
+text\<open>There is a special variable called "heap":\<close>
+definition "var_heap" :: var where "var_heap = undefined"
 
 text\<open>Instances don't appear in binders, so we can just model these as string names.\<close>
 type_synonym instanc = string
