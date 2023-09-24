@@ -278,7 +278,27 @@ thm heap_ty.strong_exhaust
 
 *)
 
+inductive heap_entails_ty :: "heap \<Rightarrow> env \<Rightarrow> heap_ty \<Rightarrow> bool" ("_ \<Turnstile>_ _" [50,50,50] 500)
+where
+  Ent_Top:      "h \<Turnstile>\<epsilon> Top" |
+  Ent_ChoiceL:  "\<lbrakk> h \<Turnstile>\<epsilon> \<tau>\<^sub>1 \<rbrakk>
+                \<Longrightarrow> h \<Turnstile>\<epsilon> (Choice \<tau>\<^sub>1 \<tau>\<^sub>2)" |
+  Ent_ChoiceR:  "\<lbrakk> h \<Turnstile>\<epsilon> \<tau>\<^sub>2 \<rbrakk>
+                \<Longrightarrow> h \<Turnstile>\<epsilon> (Choice \<tau>\<^sub>1 \<tau>\<^sub>2)" |
+  Ent_Refine:   "\<lbrakk> h \<Turnstile>\<epsilon> \<tau>; \<lbrakk>\<phi> in \<epsilon>[x \<rightarrow> h]\<rbrakk>\<^sub>f = Some True \<rbrakk>
+                \<Longrightarrow> h \<Turnstile>\<epsilon> (Refinement x \<tau> \<phi>)" |
+  Ent_Sigma:    "\<lbrakk> In = In\<^sub>1 @ In\<^sub>2; Out = Out\<^sub>1 @ Out\<^sub>2; H = join_headers H\<^sub>1 H\<^sub>2;
+                   (Heap In\<^sub>1 Out\<^sub>1 H\<^sub>1) \<Turnstile>\<epsilon> \<tau>\<^sub>1; (Heap In\<^sub>2 Out\<^sub>2 H\<^sub>2) \<Turnstile>(\<epsilon>[x \<rightarrow> (Heap In\<^sub>1 Out\<^sub>1 H\<^sub>1)]) \<tau>\<^sub>2\<rbrakk>
+                \<Longrightarrow> (Heap In Out H) \<Turnstile>\<epsilon> (Sigma x \<tau>\<^sub>1 \<tau>\<^sub>2)" |
+  Ent_Subst:    "\<lbrakk> (Heap In\<^sub>2 Out\<^sub>2 H\<^sub>2) \<Turnstile>\<epsilon> \<tau>\<^sub>2; h \<Turnstile>(\<epsilon>[x \<rightarrow> (Heap In\<^sub>2 Out\<^sub>2 H\<^sub>2)]) \<tau>\<^sub>1 \<rbrakk>
+                \<Longrightarrow> h \<Turnstile>\<epsilon> (Substitution \<tau>\<^sub>1 x \<tau>\<^sub>2)"
 
+definition env_entails_ty_env :: "env \<Rightarrow> ty_env \<Rightarrow> bool" ("_ \<Turnstile> _" [50,50] 500)
+where
+  "(\<epsilon> \<Turnstile> \<Gamma>) = (\<forall>x. \<exists>h \<tau>. x \<in> (fst ` set \<Gamma>) \<longrightarrow> (map_of \<epsilon> x = Some h) \<and> (map_of \<Gamma> x = Some \<tau>) \<and> (h \<Turnstile>\<epsilon> \<tau>))"
+
+definition ty_includes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<Rightarrow> bool" where
+  "ty_includes \<Gamma> \<tau> i = False"
 
 
 end
