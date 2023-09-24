@@ -1,4 +1,6 @@
-theory Syntax imports Nominal2.Nominal2 begin
+theory Syntax
+  imports Nominal2.Nominal2 "HOL-Library.AList"
+begin
 
 section\<open>General Definitions\<close>
 
@@ -29,6 +31,13 @@ type_synonym header_table = "instanc \<Rightarrow> header_type option"
 
 datatype headers = Headers "instanc \<Rightarrow> bv option"
 datatype heap = Heap bv bv headers
+
+(* Easier to work with than "var \<Rightarrow> heap" with Nominal2 because it has a finite support (I think) *)
+type_synonym env = "(var \<times> heap) list"
+
+definition env_update :: "env \<Rightarrow> var \<Rightarrow> heap \<Rightarrow> env" ("_[_ \<rightarrow> _]" [1000, 49, 49] 1000)
+where
+  "env_update \<epsilon> x h = AList.update x h \<epsilon>"
 
 section\<open>Expressions and Formulas\<close>
 
@@ -73,12 +82,18 @@ nominal_datatype heap_ty =
   Sigma x::var \<tau>\<^sub>1::heap_ty \<tau>\<^sub>2::heap_ty binds x in \<tau>\<^sub>2 |
   Choice heap_ty heap_ty |
   Refinement x::var heap_ty \<phi>::formula binds x in \<phi> |
-  Substitution heap_ty var heap_ty
+  Substitution \<tau>\<^sub>1::heap_ty x::var \<tau>\<^sub>2::heap_ty binds x in \<tau>\<^sub>1
 
 nominal_datatype pi_ty = PiTy x::var \<tau>\<^sub>1::heap_ty \<tau>\<^sub>2::heap_ty binds x in \<tau>\<^sub>2
 
 nominal_datatype base_ty = Nat | Bool | BV | Pi pi_ty
 
+type_synonym ty_env = "(var \<times> heap_ty) list"
+
+definition ty_env_update :: "ty_env \<Rightarrow> var \<Rightarrow> heap_ty \<Rightarrow> ty_env"
+  ("_; _ : _" [1000, 49, 49] 1000)
+where
+  "ty_env_update \<epsilon> x h = AList.update x h \<epsilon>"
 
 section\<open>Commands\<close>
 

@@ -53,6 +53,9 @@ fun serialize_header :: "headers \<Rightarrow> instanc \<Rightarrow> bv option" 
 fun deserialize_header :: "header_type \<Rightarrow> bv \<Rightarrow> (bv \<times> bv)" where
   "deserialize_header \<eta> In = (let len = header_length \<eta> in (take len In, drop len In))"
 
+fun join_headers :: "headers \<Rightarrow> headers \<Rightarrow> headers" where
+  "join_headers (Headers h\<^sub>1) (Headers h\<^sub>2) = Headers (Map.map_add h\<^sub>1 h\<^sub>2)"
+
 section\<open>Heaps\<close>
 
 instantiation heap :: pure begin
@@ -79,10 +82,15 @@ lemma heap_lookup_instance_eqvt[eqvt]:
   "p \<bullet> heap_lookup_instance h i = heap_lookup_instance (p \<bullet> h) (p \<bullet> i)"
   by (simp add: permute_pure)
 
-section\<open>Environments\<close>
+no_notation map_add (infixl "++" 100) \<comment> \<open>avoid clash with built-in map_add notation\<close>
+fun concat_heaps :: "heap \<Rightarrow> heap \<Rightarrow> heap" (infixl "++" 100) where
+  "concat_heaps (Heap In\<^sub>1 Out\<^sub>1 H\<^sub>1) (Heap In\<^sub>2 Out\<^sub>2 H\<^sub>2)
+    = Heap (In\<^sub>1 @ In\<^sub>2) (Out\<^sub>1 @ Out\<^sub>2) (join_headers H\<^sub>1 H\<^sub>2)"
 
-(* Easier to work with than "var \<Rightarrow> heap" with Nominal2 because it has a finite support (I think) *)
-type_synonym env = "(var \<times> heap) list"
+lemma concat_heaps_eqvt[eqvt]: "p \<bullet> concat_heaps h\<^sub>1 h\<^sub>2 = concat_heaps (p \<bullet> h\<^sub>1) (p \<bullet> h\<^sub>2)"
+  by (simp add: permute_pure)
+
+section\<open>Environments\<close>
 
 fun env_lookup_packet :: "env \<Rightarrow> var \<Rightarrow> packet \<Rightarrow> bv option" where
   "env_lookup_packet \<epsilon> x p = map_option (\<lambda>h. heap_lookup_packet h p) (map_of \<epsilon> x)"
@@ -102,5 +110,8 @@ nominal_function env_lookup_sliceable :: "env \<Rightarrow> sliceable \<Rightarr
 done
 nominal_termination (eqvt)
   by lexicographic_order
+
+lemma env_update_eqvt[eqvt]: "p \<bullet> \<epsilon>[x \<rightarrow> h] = (p \<bullet> \<epsilon>)[p \<bullet> x \<rightarrow> p \<bullet> h]"
+  by (induct \<epsilon>) (auto simp add: permute_pure env_update_def)
 
 end
