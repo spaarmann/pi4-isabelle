@@ -4,15 +4,9 @@ no_notation inverse_divide (infixl "'/" 70) \<comment> \<open>avoid clash with d
 
 text\<open>For next meeting:
 Questions/Help:
-- Type freshness assumptions?
+
 To talk about:
-- T-Mod premise formulas use \<forall> qualifiers, which are not actually a thing in the formula syntax.
-  I suppose we just "desugar" this into an AND over the finite number of set elements?
-- What's up with subtyping being defined in terms of one or two environments on p. 12-13?
-- Figured out where "bit variables" appear: For chomp & heapRef. If I understand it correctly,
-  chomp introduces placeholder variables into expressions, and then heapRef replaces them with
-  concrete values again.
-- Should I stick with slices only even given e.g. the T-Mod rule?
+
 \<close>
 
 section\<open>Expressions and Formulas\<close>
@@ -55,17 +49,10 @@ What forms do we actually have?
 So let's model the last two as mapping to bvs as well, with names just desugaring into slices? We
 have the HT that gives us types for each instanc, so can just look up the range corresponding to a
 name.
-
-TODO: That might be the wrong choice. Typing rule T-Mod is very explicitly defined in terms of
-fields being equal or not; translating that to use ranges/slices instead might be much more annoying
-than just using the record-like model all the time. Or maybe it is fine? We could just generate a
-slice equality for each field.
 \<close>
 
 subsection\<open>Small-step semantics\<close>
 
-(* TODO: At the moment, we just ignore variables here and assume they must be "heap". Should we
-   explicitly encode that somehow, perhaps in the rule assumptions? *)
 inductive
   exp_small_step :: "(bv \<times> bv \<times> headers \<times> exp) \<Rightarrow> exp \<Rightarrow> bool" ("_ \<rightarrow>\<^sub>e _" [0,50] 50)
 where
@@ -225,58 +212,44 @@ where
 
 section\<open>Types\<close>
 
-(* TODO: Do these need freshness assumptions? *)
 nominal_function heap_ty_sem :: "heap_ty \<Rightarrow> env \<Rightarrow> heap set" ("\<lbrakk>_ in _\<rbrakk>\<^sub>t" [50,60] 100)
 where
   "\<lbrakk>Nothing in \<epsilon>\<rbrakk>\<^sub>t = {}" |
   "\<lbrakk>Top in \<epsilon>\<rbrakk>\<^sub>t = UNIV" |
-  "\<lbrakk>Sigma x \<tau>\<^sub>1 \<tau>\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>t = {h\<^sub>1 ++ h\<^sub>2 | h\<^sub>1 h\<^sub>2. h\<^sub>1 \<in> \<lbrakk>\<tau>\<^sub>1 in \<epsilon>\<rbrakk>\<^sub>t \<and> h\<^sub>2 \<in> \<lbrakk>\<tau>\<^sub>2 in \<epsilon>[x \<rightarrow> h\<^sub>1]\<rbrakk>\<^sub>t}" |
+  "atom x \<sharp> (\<tau>\<^sub>1, \<epsilon>)
+   \<Longrightarrow>\<lbrakk>Sigma x \<tau>\<^sub>1 \<tau>\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>t = {h\<^sub>1 ++ h\<^sub>2 | h\<^sub>1 h\<^sub>2. h\<^sub>1 \<in> \<lbrakk>\<tau>\<^sub>1 in \<epsilon>\<rbrakk>\<^sub>t \<and> h\<^sub>2 \<in> \<lbrakk>\<tau>\<^sub>2 in \<epsilon>[x \<rightarrow> h\<^sub>1]\<rbrakk>\<^sub>t}" |
   "\<lbrakk>Choice \<tau>\<^sub>1 \<tau>\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>t = \<lbrakk>\<tau>\<^sub>1 in \<epsilon>\<rbrakk>\<^sub>t \<union> \<lbrakk>\<tau>\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>t" |
-  "\<lbrakk>Refinement x \<tau> \<phi> in \<epsilon>\<rbrakk>\<^sub>t = {h | h. h \<in> \<lbrakk>\<tau> in \<epsilon>\<rbrakk>\<^sub>t \<and> \<lbrakk>\<phi> in \<epsilon>[x \<rightarrow> h]\<rbrakk>\<^sub>f = Some True}" |
-  "atom x \<sharp> (\<tau>\<^sub>2, \<epsilon>) \<Longrightarrow> \<lbrakk>Substitution \<tau>\<^sub>1 x \<tau>\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>t = {h | h h\<^sub>2. (h\<^sub>2 \<in> \<lbrakk>\<tau>\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>t) \<and> (h \<in> \<lbrakk>\<tau>\<^sub>1 in \<epsilon>[x \<rightarrow> h\<^sub>2]\<rbrakk>\<^sub>t)}"
+  "atom x \<sharp> (\<tau>, \<epsilon>)
+   \<Longrightarrow> \<lbrakk>Refinement x \<tau> \<phi> in \<epsilon>\<rbrakk>\<^sub>t = {h. h \<in> \<lbrakk>\<tau> in \<epsilon>\<rbrakk>\<^sub>t \<and> \<lbrakk>\<phi> in \<epsilon>[x \<rightarrow> h]\<rbrakk>\<^sub>f = Some True}" |
+  "atom x \<sharp> (\<tau>\<^sub>2, \<epsilon>)
+   \<Longrightarrow> \<lbrakk>Substitution \<tau>\<^sub>1 x \<tau>\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>t = {h. \<exists> h\<^sub>2. (h\<^sub>2 \<in> \<lbrakk>\<tau>\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>t) \<and> (h \<in> \<lbrakk>\<tau>\<^sub>1 in \<epsilon>[x \<rightarrow> h\<^sub>2]\<rbrakk>\<^sub>t)}"
   using [[simproc del: alpha_lst]]
   subgoal by (auto simp add: eqvt_def heap_ty_sem_graph_aux_def)
   subgoal by (erule heap_ty_sem_graph.induct) (auto)
   apply clarify
-  subgoal for P t e
-    apply (rule heap_ty.strong_exhaust[of t P])
+  subgoal for P \<tau> \<epsilon>
+    apply (rule heap_ty.strong_exhaust[of \<tau> P "(\<tau>, \<epsilon>)"])
     apply (auto simp add: fresh_star_def fresh_Pair)
-    sorry
+    done
   apply (simp_all add: fresh_star_def fresh_at_base)
-  subgoal for x t2 e t1 x' t1'
-    apply (erule Abs_lst1_fcb2'[where c = "(t2, e)"])
-    apply (simp_all add: eqvt_at_def fresh_star_def)
-    apply (simp_all add: perm_supp_eq Abs_fresh_iff fresh_Pair)
-    (*apply (metis fresh_star_def fresh_star_supp_conv supp_perm_eq_test)*)
+  subgoal for x \<tau>\<^sub>1 \<epsilon> \<tau>\<^sub>2 x' \<tau>\<^sub>2'
+    apply (erule Abs_lst1_fcb2'[where c = "(\<tau>\<^sub>1, \<epsilon>)"])
+    apply (simp_all add: eqvt_at_def fresh_star_Pair)
+    apply (simp_all add: perm_supp_eq fresh_Pair pure_fresh fresh_star_insert)
+  done
+  subgoal for x \<tau> \<epsilon> \<phi> x' \<phi>'
+    apply (erule Abs_lst1_fcb2'[where c = "(\<tau>, \<epsilon>)"])
+    apply (simp_all add: eqvt_at_def fresh_star_Pair)
+    apply (simp_all add: perm_supp_eq fresh_Pair pure_fresh fresh_star_insert)
+  done
+  subgoal for x \<tau>\<^sub>2 \<epsilon> \<tau>\<^sub>1 x' \<tau>\<^sub>1'
+    apply (erule Abs_lst1_fcb2'[where c = "(\<tau>\<^sub>2, \<epsilon>)"])
+    apply (simp_all add: eqvt_at_def fresh_star_Pair)
+    apply (simp_all add: perm_supp_eq fresh_Pair pure_fresh fresh_star_insert)
+  done
 done
 nominal_termination (eqvt)
   by lexicographic_order
-
-thm Abs_lst1_fcb2'
-thm perm_supp_eq
-thm fresh_star_supp_conv
-thm supp_perm_eq_test
-thm fresh_Pair
-thm heap_ty.strong_exhaust
-
-(*
-  using [[simproc del: alpha_lst]]
-  subgoal by (simp add: eqvt_def subst_graph_aux_def)
-  subgoal by (erule subst_graph.induct) (auto simp: fresh_star_def fresh_at_base)
-                      apply clarify
-  subgoal for P t s y
-    by (rule term.strong_exhaust[of t P "(s, y)"]) (auto simp: fresh_star_def fresh_Pair)
-                      apply (simp_all add: fresh_star_def fresh_at_base)
-  subgoal for x' y' s' t' x t
-    apply (erule Abs_lst1_fcb2'[where c = "(s', y')"])
-       apply (simp_all add: eqvt_at_def fresh_star_def)
-       apply (simp_all add: perm_supp_eq Abs_fresh_iff fresh_Pair)
-    apply (metis fresh_star_def fresh_star_supp_conv supp_perm_eq_test)
-    apply (metis fresh_star_def fresh_star_supp_conv supp_perm_eq_test)
-    done
-  done
-
-*)
 
 inductive heap_entails_ty :: "heap \<Rightarrow> env \<Rightarrow> heap_ty \<Rightarrow> bool" ("_ \<Turnstile>_ _" [50,50,50] 500)
 where

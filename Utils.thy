@@ -15,6 +15,8 @@ lemma bind_eqvt[eqvt]: "p \<bullet> Option.bind x f = Option.bind (p \<bullet> x
 lemma map_of_eqvt[eqvt]: "p \<bullet> map_of xs x = map_of (p \<bullet> xs) (p \<bullet> x)"
   by (induct xs) auto
 
+lemma fresh_star_empty[simp]: "{} \<sharp>* x" by (simp add: fresh_star_def)
+
 section\<open>Headers\<close>
 
 text\<open>This is necessary to use headers (and heaps later)  in nominal_functions. It basically states
