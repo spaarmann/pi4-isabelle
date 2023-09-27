@@ -69,6 +69,9 @@ end
 fun triple_to_heap :: "bv \<Rightarrow> bv \<Rightarrow> headers \<Rightarrow> heap" where
   "triple_to_heap In Out H = Heap In Out H"
 
+fun heap_dom :: "heap \<Rightarrow> instanc set" where
+  "heap_dom (Heap _ _ (Headers H)) = dom H"
+
 fun heap_lookup_packet :: "heap \<Rightarrow> packet \<Rightarrow> bv" where
   "heap_lookup_packet (Heap In Out _) PktIn = In" |
   "heap_lookup_packet (Heap In Out _) PktOut = Out"

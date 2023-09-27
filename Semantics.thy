@@ -266,12 +266,15 @@ where
   Ent_Subst:    "\<lbrakk> (Heap In\<^sub>2 Out\<^sub>2 H\<^sub>2) \<Turnstile>\<epsilon> \<tau>\<^sub>2; h \<Turnstile>(\<epsilon>[x \<rightarrow> (Heap In\<^sub>2 Out\<^sub>2 H\<^sub>2)]) \<tau>\<^sub>1 \<rbrakk>
                 \<Longrightarrow> h \<Turnstile>\<epsilon> (Substitution \<tau>\<^sub>1 x \<tau>\<^sub>2)"
 
-definition env_entails_ty_env :: "env \<Rightarrow> ty_env \<Rightarrow> bool" ("_ \<Turnstile> _" [50,50] 500)
+definition env_entails_ty_env :: "env \<Rightarrow> ty_env \<Rightarrow> bool" ("_ \<TTurnstile> _" [50,50] 500)
 where
-  "(\<epsilon> \<Turnstile> \<Gamma>) = (\<forall>x. \<exists>h \<tau>. x \<in> (fst ` set \<Gamma>) \<longrightarrow> (map_of \<epsilon> x = Some h) \<and> (map_of \<Gamma> x = Some \<tau>) \<and> (h \<Turnstile>\<epsilon> \<tau>))"
+  "(\<epsilon> \<TTurnstile> \<Gamma>) = (\<forall>x. x \<in> (fst ` set \<Gamma>)
+    \<longrightarrow> (\<exists>h \<tau>. (map_of \<epsilon> x = Some h) \<and> (map_of \<Gamma> x = Some \<tau>) \<and> (h \<Turnstile>\<epsilon> \<tau>)))"
 
 definition ty_includes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<Rightarrow> bool" where
-  "ty_includes \<Gamma> \<tau> i = False"
+  "ty_includes \<Gamma> \<tau> i = (\<forall>\<epsilon>. \<epsilon> \<TTurnstile> \<Gamma> \<longrightarrow> (\<forall>h \<in> \<lbrakk>\<tau> in \<epsilon>\<rbrakk>\<^sub>t. i \<in> heap_dom h))"
 
+definition ty_excludes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<Rightarrow> bool" where
+  "ty_excludes \<Gamma> \<tau> i = (\<forall>\<epsilon>. \<epsilon> \<TTurnstile> \<Gamma> \<longrightarrow> (\<forall>h \<in> \<lbrakk>\<tau> in \<epsilon>\<rbrakk>\<^sub>t. i \<notin> heap_dom h))"
 
 end
