@@ -6,7 +6,7 @@ text\<open>For next meeting:
 Questions/Help:
 
 To talk about:
-
+- Exp/formula typing as judgement with extra parameter or "\<Gamma>;\<tau>" as \<Gamma>[var_heap -> \<tau>]?
 \<close>
 
 section\<open>Expressions and Formulas\<close>
@@ -277,9 +277,21 @@ definition ty_includes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<
 definition ty_excludes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<Rightarrow> bool" where
   "ty_excludes \<Gamma> \<tau> i = (\<forall>\<epsilon>. \<epsilon> \<TTurnstile> \<Gamma> \<longrightarrow> (\<forall>h \<in> \<lbrakk>\<tau> in \<epsilon>\<rbrakk>\<^sub>t. i \<notin> heap_dom h))"
 
-inductive exp_typing :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> exp \<Rightarrow> base_ty \<Rightarrow> bool"
-  ("_; _ \<turnstile>\<^sub>e _ : _" [50,50,50,50] 60)
-(* TODO *)
+inductive exp_typing :: "ty_env \<Rightarrow> exp \<Rightarrow> base_ty \<Rightarrow> bool"
+  ("_ \<turnstile>\<^sub>e _ : _" [40,50,50] 60)
+where
+  TE_Num:     "\<Gamma>; \<tau> \<turnstile>\<^sub>e (Num n) : Nat" |
+  TE_Bv:      "\<Gamma>; \<tau> \<turnstile>\<^sub>e (Bv bv) : BV" |
+  TE_Plus:    "\<lbrakk> \<Gamma>; \<tau> \<turnstile>\<^sub>e e\<^sub>1 : Nat; \<Gamma>; \<tau> \<turnstile>\<^sub>e e\<^sub>2 : Nat \<rbrakk>
+              \<Longrightarrow> \<Gamma>; \<tau> \<turnstile>\<^sub>e (Plus e\<^sub>1 e\<^sub>2) : Nat" |
+  TE_Concat:  "\<lbrakk> \<Gamma>; \<tau> \<turnstile>\<^sub>e e\<^sub>1 : BV; \<Gamma>; \<tau> \<turnstile>\<^sub>e e\<^sub>2 : BV \<rbrakk>
+              \<Longrightarrow> \<Gamma>; \<tau> \<turnstile>\<^sub>e (Concat e\<^sub>1 e\<^sub>2) : BV" |
+  TE_Packet:  "\<lbrakk> x = var_heap \<or> map_of \<Gamma> x = Some _ \<rbrakk>
+              \<Longrightarrow> \<Gamma>; \<tau> \<turnstile>\<^sub>e (Packet x p) : BV" |
+  TE_Len:     "\<lbrakk> x = var_heap \<or> map_of \<Gamma> x = Some _ \<rbrakk>
+              \<Longrightarrow> \<Gamma>; \<tau> \<turnstile>\<^sub>e (Len x p) : Nat" |
+  TE_SlicePkt:  "\<lbrakk> x = var_heap \<or> map_of \<Gamma> x = Some _; 0 \<le> n \<and> n < m \<rbrakk>
+                \<Longrightarrow> \<Gamma>; \<tau> \<turnstile>\<^sub>e (Slice (SlPacket x p) n m) : BV" (* TODO: Do these assumptions here make sense? *)
 
 inductive formula_typing :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> formula \<Rightarrow> base_ty \<Rightarrow> bool"
   ("_; _ \<turnstile>\<^sub>f _ : _" [50,50,50,50] 60)
