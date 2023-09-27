@@ -277,4 +277,16 @@ definition ty_includes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<
 definition ty_excludes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<Rightarrow> bool" where
   "ty_excludes \<Gamma> \<tau> i = (\<forall>\<epsilon>. \<epsilon> \<TTurnstile> \<Gamma> \<longrightarrow> (\<forall>h \<in> \<lbrakk>\<tau> in \<epsilon>\<rbrakk>\<^sub>t. i \<notin> heap_dom h))"
 
+inductive exp_typing :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> exp \<Rightarrow> base_ty \<Rightarrow> bool"
+  ("_; _ \<turnstile>\<^sub>e _ : _" [50,50,50,50] 60)
+(* TODO *)
+
+inductive formula_typing :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> formula \<Rightarrow> base_ty \<Rightarrow> bool"
+  ("_; _ \<turnstile>\<^sub>f _ : _" [50,50,50,50] 60)
+(* TODO *)
+
+inductive command_typing :: "ty_env \<Rightarrow> cmd \<Rightarrow> pi_ty \<Rightarrow> bool"
+  ("_ \<turnstile> _ : _" [50,50,50] 60)
+(* TODO *)
+
 end
