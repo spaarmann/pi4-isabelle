@@ -284,18 +284,22 @@ definition ty_excludes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<
 inductive exp_typing :: "ty_env \<Rightarrow> exp \<Rightarrow> base_ty \<Rightarrow> bool"
   ("_ \<turnstile>\<^sub>e _ : _" [51,60,60] 60)
 where
-  TE_Num:     "(\<Gamma>; \<tau>) \<turnstile>\<^sub>e (Num n) : Nat" |
-  TE_Bv:      "(\<Gamma>; \<tau>) \<turnstile>\<^sub>e (Bv bv) : BV" |
-  TE_Plus:    "\<lbrakk> (\<Gamma>; \<tau>) \<turnstile>\<^sub>e e\<^sub>1 : Nat; (\<Gamma>; \<tau>) \<turnstile>\<^sub>e e\<^sub>2 : Nat \<rbrakk>
-              \<Longrightarrow> (\<Gamma>; \<tau>) \<turnstile>\<^sub>e (Plus e\<^sub>1 e\<^sub>2) : Nat" |
-  TE_Concat:  "\<lbrakk> (\<Gamma>; \<tau>) \<turnstile>\<^sub>e e\<^sub>1 : BV; (\<Gamma>; \<tau>) \<turnstile>\<^sub>e e\<^sub>2 : BV \<rbrakk>
-              \<Longrightarrow> (\<Gamma>; \<tau>) \<turnstile>\<^sub>e (Concat e\<^sub>1 e\<^sub>2) : BV" |
-  TE_Packet:  "\<lbrakk> map_of \<Gamma> x = Some _ \<rbrakk>
-              \<Longrightarrow> (\<Gamma>; \<tau>) \<turnstile>\<^sub>e (Packet x p) : BV" |
-  TE_Len:     "\<lbrakk> map_of \<Gamma> x = Some _ \<rbrakk>
-              \<Longrightarrow> (\<Gamma>; \<tau>) \<turnstile>\<^sub>e (Len x p) : Nat" |
+  TE_Num:       "\<Gamma> \<turnstile>\<^sub>e (Num n) : Nat" |
+  TE_Bv:        "\<Gamma> \<turnstile>\<^sub>e (Bv bv) : BV" |
+  TE_Plus:      "\<lbrakk> \<Gamma> \<turnstile>\<^sub>e e\<^sub>1 : Nat; \<Gamma> \<turnstile>\<^sub>e e\<^sub>2 : Nat \<rbrakk>
+                \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>e (Plus e\<^sub>1 e\<^sub>2) : Nat" |
+  TE_Concat:    "\<lbrakk> \<Gamma> \<turnstile>\<^sub>e e\<^sub>1 : BV; \<Gamma> \<turnstile>\<^sub>e e\<^sub>2 : BV \<rbrakk>
+                \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>e (Concat e\<^sub>1 e\<^sub>2) : BV" |
+  TE_Packet:    "\<lbrakk> map_of \<Gamma> x = Some _ \<rbrakk>
+                \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>e (Packet x p) : BV" |
+  TE_Len:       "\<lbrakk> map_of \<Gamma> x = Some _ \<rbrakk>
+                \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>e (Len x p) : Nat" |
+  (* TODO: Do these assumptions here make sense? These could be handled by well-formedness instead
+           maybe.*)
   TE_SlicePkt:  "\<lbrakk> map_of \<Gamma> x = Some _; 0 \<le> n \<and> n < m \<rbrakk>
-                \<Longrightarrow> (\<Gamma>; \<tau>) \<turnstile>\<^sub>e (Slice (SlPacket x p) n m) : BV" (* TODO: Do these assumptions here make sense? *)
+                \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>e (Slice (SlPacket x p) n m) : BV" |
+  TE_SliceInst: "\<lbrakk> map_of \<Gamma> x = Some \<tau>; ty_includes \<Gamma> \<tau> i; 0 \<le> n \<and> n < m \<rbrakk>
+                \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>e (Slice (SlInstance x i) n m) : BV"
 
 inductive formula_typing :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> formula \<Rightarrow> base_ty \<Rightarrow> bool"
   ("_; _ \<turnstile>\<^sub>f _ : _" [50,50,50,50] 60)
