@@ -301,9 +301,23 @@ where
   TE_SliceInst: "\<lbrakk> map_of \<Gamma> x = Some \<tau>; ty_includes \<Gamma> \<tau> i; 0 \<le> n \<and> n < m \<rbrakk>
                 \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>e (Slice (SlInstance x i) n m) : BV"
 
-inductive formula_typing :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> formula \<Rightarrow> base_ty \<Rightarrow> bool"
-  ("_; _ \<turnstile>\<^sub>f _ : _" [50,50,50,50] 60)
-(* TODO *)
+inductive formula_typing :: "ty_env \<Rightarrow> formula \<Rightarrow> base_ty \<Rightarrow> bool"
+  ("_ \<turnstile>\<^sub>f _ : _" [50,50,50] 60)
+where
+  TF_True:      "\<Gamma> \<turnstile>\<^sub>f FTrue : Bool" |
+  TF_False:     "\<Gamma> \<turnstile>\<^sub>f FFalse : Bool" |
+  TF_EqNum:     "\<lbrakk> \<Gamma> \<turnstile>\<^sub>e e\<^sub>1 : Nat; \<Gamma> \<turnstile>\<^sub>e e\<^sub>2 : Nat \<rbrakk>
+                \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>f (Eq e\<^sub>1 e\<^sub>2) : Bool" |
+  TF_EqBv:      "\<lbrakk> \<Gamma> \<turnstile>\<^sub>e e\<^sub>1 : BV; \<Gamma> \<turnstile>\<^sub>e e\<^sub>2 : BV \<rbrakk>
+                \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>f (Eq e\<^sub>1 e\<^sub>2) : Bool" |
+  TF_Gt:        "\<lbrakk> \<Gamma> \<turnstile>\<^sub>e e\<^sub>1 : Nat; \<Gamma> \<turnstile>\<^sub>e e\<^sub>2 : Nat \<rbrakk>
+                \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>f (Gt e\<^sub>1 e\<^sub>2) : Bool" |
+  TF_And:       "\<lbrakk> \<Gamma> \<turnstile>\<^sub>f \<phi>\<^sub>1 : Bool; \<Gamma> \<turnstile>\<^sub>f \<phi>\<^sub>2 : Bool \<rbrakk>
+                \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>f (And \<phi>\<^sub>1 \<phi>\<^sub>2) : Bool" |
+  TF_Not:       "\<lbrakk> \<Gamma> \<turnstile>\<^sub>f \<phi> : Bool \<rbrakk>
+                \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>f (Not \<phi>) : Bool" |
+  TF_IsValid:   "\<lbrakk> map_of \<Gamma> x = Some _ \<rbrakk>
+                \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>f (IsValid x i) : Bool"
 
 inductive command_typing :: "ty_env \<Rightarrow> cmd \<Rightarrow> pi_ty \<Rightarrow> bool"
   ("_ \<turnstile> _ : _" [50,50,50] 60)
