@@ -4,9 +4,12 @@ no_notation inverse_divide (infixl "'/" 70) \<comment> \<open>avoid clash with d
 
 text\<open>For next meeting:
 Questions/Help:
-
+- If "\<Gamma>;\<tau>" is just syntax for extending \<Gamma>, can I define it without making the grammar abiguous?
 To talk about:
 - Exp/formula typing as judgement with extra parameter or "\<Gamma>;\<tau>" as \<Gamma>[var_heap -> \<tau>]?
+- Well-formedness predicates from section 5.4 of the thesis.
+- In the thesis, "env" also maps bit variables to single bits. This is mentioned off-hand in one
+  place in the paper too I think.
 \<close>
 
 section\<open>Expressions and Formulas\<close>
@@ -54,7 +57,7 @@ name.
 subsection\<open>Small-step semantics\<close>
 
 inductive
-  exp_small_step :: "(bv \<times> bv \<times> headers \<times> exp) \<Rightarrow> exp \<Rightarrow> bool" ("_ \<rightarrow>\<^sub>e _" [0,50] 50)
+  exp_small_step :: "(bv \<times> bv \<times> headers \<times> exp) \<Rightarrow> exp \<Rightarrow> bool" ("_ \<rightarrow>\<^sub>e _" [50,50] 50)
 where
   E_Plus1:      "\<lbrakk> (In, Out, H, e\<^sub>1) \<rightarrow>\<^sub>e e\<^sub>1' \<rbrakk>
                 \<Longrightarrow> (In, Out, H, Plus e\<^sub>1 e\<^sub>2) \<rightarrow>\<^sub>e Plus e\<^sub>1' e\<^sub>2" |
@@ -78,13 +81,13 @@ where
                    slice bv n m = bs \<rbrakk>
                 \<Longrightarrow> (In, Out, H, Slice (SlInstance var_heap i) n m) \<rightarrow>\<^sub>e Bv bs"
 
-inductive exp_small_steps :: "(bv \<times> bv \<times> headers \<times> exp) \<Rightarrow> exp \<Rightarrow> bool" ("_ \<rightarrow>\<^sub>e* _" [0,50] 50)
+inductive exp_small_steps :: "(bv \<times> bv \<times> headers \<times> exp) \<Rightarrow> exp \<Rightarrow> bool" ("_ \<rightarrow>\<^sub>e* _" [50,50] 50)
 where
   ES_Id:     "(In, Out, H, e) \<rightarrow>\<^sub>e* e" |
   ES_Step:   "\<lbrakk> (In, Out, H, e) \<rightarrow>\<^sub>e e''; (In, Out, H, e'') \<rightarrow>\<^sub>e* e' \<rbrakk>
              \<Longrightarrow> (In, Out, H, e) \<rightarrow>\<^sub>e* e'"
 
-inductive formula_small_step :: "(bv \<times> bv \<times> headers \<times> formula) \<Rightarrow> formula \<Rightarrow> bool" ("_ \<rightarrow>\<^sub>f _" [0,50] 50)
+inductive formula_small_step :: "(bv \<times> bv \<times> headers \<times> formula) \<Rightarrow> formula \<Rightarrow> bool" ("_ \<rightarrow>\<^sub>f _" [50,50] 50)
 where
   F_Eq1:        "\<lbrakk> (In, Out, H, e\<^sub>1) \<rightarrow>\<^sub>e e\<^sub>1' \<rbrakk>
                 \<Longrightarrow> (In, Out, H, Eq e\<^sub>1 e\<^sub>2) \<rightarrow>\<^sub>f Eq e\<^sub>1' e\<^sub>2" |
@@ -277,21 +280,22 @@ definition ty_includes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<
 definition ty_excludes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<Rightarrow> bool" where
   "ty_excludes \<Gamma> \<tau> i = (\<forall>\<epsilon>. \<epsilon> \<TTurnstile> \<Gamma> \<longrightarrow> (\<forall>h \<in> \<lbrakk>\<tau> in \<epsilon>\<rbrakk>\<^sub>t. i \<notin> heap_dom h))"
 
+(* TODO: I can't get the prios for this and ty_env_add_heap (";") such that this is not ambigious *)
 inductive exp_typing :: "ty_env \<Rightarrow> exp \<Rightarrow> base_ty \<Rightarrow> bool"
-  ("_ \<turnstile>\<^sub>e _ : _" [40,50,50] 60)
+  ("_ \<turnstile>\<^sub>e _ : _" [51,60,60] 60)
 where
-  TE_Num:     "\<Gamma>; \<tau> \<turnstile>\<^sub>e (Num n) : Nat" |
-  TE_Bv:      "\<Gamma>; \<tau> \<turnstile>\<^sub>e (Bv bv) : BV" |
-  TE_Plus:    "\<lbrakk> \<Gamma>; \<tau> \<turnstile>\<^sub>e e\<^sub>1 : Nat; \<Gamma>; \<tau> \<turnstile>\<^sub>e e\<^sub>2 : Nat \<rbrakk>
-              \<Longrightarrow> \<Gamma>; \<tau> \<turnstile>\<^sub>e (Plus e\<^sub>1 e\<^sub>2) : Nat" |
-  TE_Concat:  "\<lbrakk> \<Gamma>; \<tau> \<turnstile>\<^sub>e e\<^sub>1 : BV; \<Gamma>; \<tau> \<turnstile>\<^sub>e e\<^sub>2 : BV \<rbrakk>
-              \<Longrightarrow> \<Gamma>; \<tau> \<turnstile>\<^sub>e (Concat e\<^sub>1 e\<^sub>2) : BV" |
-  TE_Packet:  "\<lbrakk> x = var_heap \<or> map_of \<Gamma> x = Some _ \<rbrakk>
-              \<Longrightarrow> \<Gamma>; \<tau> \<turnstile>\<^sub>e (Packet x p) : BV" |
-  TE_Len:     "\<lbrakk> x = var_heap \<or> map_of \<Gamma> x = Some _ \<rbrakk>
-              \<Longrightarrow> \<Gamma>; \<tau> \<turnstile>\<^sub>e (Len x p) : Nat" |
-  TE_SlicePkt:  "\<lbrakk> x = var_heap \<or> map_of \<Gamma> x = Some _; 0 \<le> n \<and> n < m \<rbrakk>
-                \<Longrightarrow> \<Gamma>; \<tau> \<turnstile>\<^sub>e (Slice (SlPacket x p) n m) : BV" (* TODO: Do these assumptions here make sense? *)
+  TE_Num:     "(\<Gamma>; \<tau>) \<turnstile>\<^sub>e (Num n) : Nat" |
+  TE_Bv:      "(\<Gamma>; \<tau>) \<turnstile>\<^sub>e (Bv bv) : BV" |
+  TE_Plus:    "\<lbrakk> (\<Gamma>; \<tau>) \<turnstile>\<^sub>e e\<^sub>1 : Nat; (\<Gamma>; \<tau>) \<turnstile>\<^sub>e e\<^sub>2 : Nat \<rbrakk>
+              \<Longrightarrow> (\<Gamma>; \<tau>) \<turnstile>\<^sub>e (Plus e\<^sub>1 e\<^sub>2) : Nat" |
+  TE_Concat:  "\<lbrakk> (\<Gamma>; \<tau>) \<turnstile>\<^sub>e e\<^sub>1 : BV; (\<Gamma>; \<tau>) \<turnstile>\<^sub>e e\<^sub>2 : BV \<rbrakk>
+              \<Longrightarrow> (\<Gamma>; \<tau>) \<turnstile>\<^sub>e (Concat e\<^sub>1 e\<^sub>2) : BV" |
+  TE_Packet:  "\<lbrakk> map_of \<Gamma> x = Some _ \<rbrakk>
+              \<Longrightarrow> (\<Gamma>; \<tau>) \<turnstile>\<^sub>e (Packet x p) : BV" |
+  TE_Len:     "\<lbrakk> map_of \<Gamma> x = Some _ \<rbrakk>
+              \<Longrightarrow> (\<Gamma>; \<tau>) \<turnstile>\<^sub>e (Len x p) : Nat" |
+  TE_SlicePkt:  "\<lbrakk> map_of \<Gamma> x = Some _; 0 \<le> n \<and> n < m \<rbrakk>
+                \<Longrightarrow> (\<Gamma>; \<tau>) \<turnstile>\<^sub>e (Slice (SlPacket x p) n m) : BV" (* TODO: Do these assumptions here make sense? *)
 
 inductive formula_typing :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> formula \<Rightarrow> base_ty \<Rightarrow> bool"
   ("_; _ \<turnstile>\<^sub>f _ : _" [50,50,50,50] 60)
