@@ -27,7 +27,13 @@ end
 
 datatype field = Field field_name nat
 datatype header_type = HeaderType string "field list"
-type_synonym header_table = "instanc \<Rightarrow> header_type option"
+type_synonym header_table = "(instanc \<times> header_type) list"
+
+instantiation header_type :: pure begin
+  definition permute_header_type :: "perm \<Rightarrow> header_type \<Rightarrow> header_type" where
+    "permute_header_type _ ht = ht"
+  instance by standard (auto simp add: permute_header_type_def)
+end
 
 datatype headers = Headers "instanc \<Rightarrow> bv option"
 datatype heap = Heap bv bv headers
@@ -85,6 +91,7 @@ nominal_datatype heap_ty =
   Substitution \<tau>\<^sub>1::heap_ty x::var \<tau>\<^sub>2::heap_ty binds x in \<tau>\<^sub>1
 
 nominal_datatype pi_ty = PiTy x::var \<tau>\<^sub>1::heap_ty \<tau>\<^sub>2::heap_ty binds x in \<tau>\<^sub>2
+  ("'(_ : _') \<rightarrow> _" [50,50,50] 50)
 
 nominal_datatype base_ty = Nat | Bool | BV | Pi pi_ty
 

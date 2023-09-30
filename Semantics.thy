@@ -190,15 +190,15 @@ where
   C_IfFalse:  "HT \<turnstile> (In, Out, H, If FFalse c\<^sub>1 c\<^sub>2) \<rightarrow> (In, Out, H, c\<^sub>2)" |
   C_Assign1:  "\<lbrakk> (In, Out, H, e) \<rightarrow>\<^sub>e e' \<rbrakk>
               \<Longrightarrow> HT \<turnstile> (In, Out, H, Assign i f e) \<rightarrow> (In, Out, H, Assign i f e')" |
-  C_Assign:   "\<lbrakk> header_lookup H i = Some inst; HT i = Some \<eta>;
+  C_Assign:   "\<lbrakk> header_lookup H i = Some inst; map_of HT i = Some \<eta>;
                  header_field_to_range \<eta> f = (n, m); splice inst n m bv = bv';
                  H' = header_update H i bv' \<rbrakk>
               \<Longrightarrow> HT \<turnstile> (In, Out, H, Assign i f (Bv bv)) \<rightarrow> (In, Out, H', Skip)" |
-  C_Extract:  "\<lbrakk> HT i = Some \<eta>; deserialize_header \<eta> In = (In', bv); H' = header_update H i bv \<rbrakk>
+  C_Extract:  "\<lbrakk> map_of HT i = Some \<eta>; deserialize_header \<eta> In = (In', bv); H' = header_update H i bv \<rbrakk>
               \<Longrightarrow> HT \<turnstile> (In, Out, H, Extract i) \<rightarrow> (In', Out, H', Skip)" |
-  C_Remit:    "\<lbrakk> HT i = Some \<eta>; serialize_header H i = Some bv \<rbrakk>
+  C_Remit:    "\<lbrakk> map_of HT i = Some \<eta>; serialize_header H i = Some bv \<rbrakk>
               \<Longrightarrow> HT \<turnstile> (In, Out, H, Remit i) \<rightarrow> (In, Out @ bv, H, Skip)" |
-  C_Add:      "\<lbrakk> HT i = Some \<eta>; header_lookup H i = None; init_header \<eta> = bv; H' = header_update H i bv \<rbrakk>
+  C_Add:      "\<lbrakk> map_of HT i = Some \<eta>; header_lookup H i = None; init_header \<eta> = bv; H' = header_update H i bv \<rbrakk>
               \<Longrightarrow> HT \<turnstile> (In, Out, H, Add i) \<rightarrow> (In, Out, H', Skip)" |
   C_Reset:    "\<lbrakk> In' = Out @ In \<rbrakk>
               \<Longrightarrow> HT \<turnstile> (In, Out, H, Reset) \<rightarrow> (In', [], empty_headers, Skip)" |
@@ -280,6 +280,25 @@ definition ty_includes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<
 definition ty_excludes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<Rightarrow> bool" where
   "ty_excludes \<Gamma> \<tau> i = (\<forall>\<epsilon>. \<epsilon> \<TTurnstile> \<Gamma> \<longrightarrow> (\<forall>h \<in> \<lbrakk>\<tau> in \<epsilon>\<rbrakk>\<^sub>t. i \<notin> heap_dom h))"
 
+nominal_function heap_instance_eq :: "header_table \<Rightarrow> var \<Rightarrow> var \<Rightarrow> formula" where
+  "heap_instance_eq HT x y = foldr (\<lambda>(i, ht) \<phi>. (let hl = header_length ht in
+    And (Eq (Slice (SlInstance x i) 0 hl) (Slice (SlInstance y i) 0 hl)) \<phi>)) HT FTrue"
+  subgoal by (auto simp add: eqvt_def heap_instance_eq_graph_aux_def Let_def)
+  apply (auto)
+done
+nominal_termination (eqvt)
+  by lexicographic_order
+
+nominal_function heap_eq :: "header_table \<Rightarrow> var \<Rightarrow> var \<Rightarrow> formula" where
+  "heap_eq HT x y = And (Eq (Packet x PktIn) (Packet y PktIn))
+                    (And (Eq (Packet x PktOut) (Packet y PktOut))
+                    (heap_instance_eq HT x y))"
+  subgoal by (auto simp add: eqvt_def heap_eq_graph_aux_def Let_def)
+  apply (auto)
+done
+nominal_termination (eqvt)
+  by lexicographic_order
+
 (* TODO: I can't get the prios for this and ty_env_add_heap (";") such that this is not ambigious *)
 inductive exp_typing :: "ty_env \<Rightarrow> exp \<Rightarrow> base_ty \<Rightarrow> bool"
   ("_ \<turnstile>\<^sub>e _ : _" [51,60,60] 60)
@@ -295,7 +314,7 @@ where
   TE_Len:       "\<lbrakk> map_of \<Gamma> x = Some _ \<rbrakk>
                 \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>e (Len x p) : Nat" |
   (* TODO: Do these assumptions here make sense? These could be handled by well-formedness instead
-           maybe.*)
+           maybe. For instances this could/should also include m \<le> size if we make HT an input.*)
   TE_SlicePkt:  "\<lbrakk> map_of \<Gamma> x = Some _; 0 \<le> n \<and> n < m \<rbrakk>
                 \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>e (Slice (SlPacket x p) n m) : BV" |
   TE_SliceInst: "\<lbrakk> map_of \<Gamma> x = Some \<tau>; ty_includes \<Gamma> \<tau> i; 0 \<le> n \<and> n < m \<rbrakk>
@@ -319,8 +338,9 @@ where
   TF_IsValid:   "\<lbrakk> map_of \<Gamma> x = Some _ \<rbrakk>
                 \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>f (IsValid x i) : Bool"
 
-inductive command_typing :: "ty_env \<Rightarrow> cmd \<Rightarrow> pi_ty \<Rightarrow> bool"
-  ("_ \<turnstile> _ : _" [50,50,50] 60)
-(* TODO *)
-
+inductive command_typing :: "header_table \<Rightarrow> ty_env \<Rightarrow> cmd \<Rightarrow> pi_ty \<Rightarrow> bool"
+  ("_, _ \<turnstile> _ : _" [50,50,50,50] 60)
+where
+  TC_Skip:      "\<lbrakk> \<tau>\<^sub>2 = Refinement y \<tau>\<^sub>1 (heap_eq HT y x)  \<rbrakk>
+                \<Longrightarrow> HT, \<Gamma> \<turnstile> Skip : ((x : \<tau>\<^sub>1) \<rightarrow> \<tau>\<^sub>2)"
 end

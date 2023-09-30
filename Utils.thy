@@ -46,6 +46,9 @@ fun header_field_to_range :: "header_type \<Rightarrow> field_name \<Rightarrow>
 fun header_length :: "header_type \<Rightarrow> nat" where
   "header_length (HeaderType _ fs) = (\<Sum>f\<leftarrow>fs. case f of field.Field x fl \<Rightarrow> fl)"
 
+lemma header_length_eqvt[eqvt]: "p \<bullet> header_length ht = header_length (p \<bullet> ht)"
+  by (auto simp add: permute_pure)
+
 fun init_header :: "header_type \<Rightarrow> bv" where
   "init_header \<eta> = replicate (header_length \<eta>) False"
 
