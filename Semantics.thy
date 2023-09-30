@@ -54,6 +54,50 @@ have the HT that gives us types for each instanc, so can just look up the range 
 name.
 \<close>
 
+text\<open>The substitution functions for expressions and formulas just need to support replacing one
+variable with another.\<close>
+nominal_function subst_var_exp :: "exp \<Rightarrow> var \<Rightarrow> var \<Rightarrow> exp" ("_[_ '/ _]\<^sub>e" [1000, 49, 49] 1000)
+where
+  "(Num n)[s/y]\<^sub>e = Num n" |
+  "(Bv bv)[s/y]\<^sub>e = Bv bv" |
+  "(Plus e\<^sub>1 e\<^sub>2)[s/y]\<^sub>e = Plus e\<^sub>1[s/y]\<^sub>e e\<^sub>2[s/y]\<^sub>e" |
+  "(Concat e\<^sub>1 e\<^sub>2)[s/y]\<^sub>e = Concat e\<^sub>1[s/y]\<^sub>e e\<^sub>2[s/y]\<^sub>e" |
+  "(Packet x p)[s/y]\<^sub>e = (if x = y then Packet s p else Packet x p)" |
+  "(Len x p)[s/y]\<^sub>e = (if x = y then Len s p else Len x p)" |
+  "(Slice (SlPacket x p) n m)[s/y]\<^sub>e = Slice (SlPacket (if x = y then s else x) p) n m" |
+  "(Slice (SlInstance x i) n m)[s/y]\<^sub>e = Slice (SlInstance (if x = y then s else x) i) n m"
+  subgoal by (simp add: eqvt_def subst_var_exp_graph_aux_def)
+  subgoal by (simp)
+  apply (clarify)
+  subgoal for P e s y
+    apply (rule exp.strong_exhaust[of e P]) apply (auto)
+    apply (rule sliceable.strong_exhaust) apply (auto)
+  done
+  apply (auto)
+done
+nominal_termination (eqvt)
+  by lexicographic_order
+
+nominal_function subst_var_formula :: "formula \<Rightarrow> var \<Rightarrow> var \<Rightarrow> formula"
+  ("_[_ '/ _]\<^sub>f" [1000, 49, 49] 1000)
+where
+  "FTrue[s/y]\<^sub>f = FTrue" |
+  "FFalse[s/y]\<^sub>f = FFalse" |
+  "(Eq e\<^sub>1 e\<^sub>2)[s/y]\<^sub>f = Eq e\<^sub>1[s/y]\<^sub>e e\<^sub>2[s/y]\<^sub>e" |
+  "(Gt e\<^sub>1 e\<^sub>2)[s/y]\<^sub>f = Gt e\<^sub>1[s/y]\<^sub>e e\<^sub>2[s/y]\<^sub>e" |
+  "(And \<phi>\<^sub>1 \<phi>\<^sub>2)[s/y]\<^sub>f = And \<phi>\<^sub>1[s/y]\<^sub>f \<phi>\<^sub>2[s/y]\<^sub>f" |
+  "(Not \<phi>)[s/y]\<^sub>f = Not \<phi>[s/y]\<^sub>f" |
+  "(IsValid x i)[s/y]\<^sub>f = IsValid (if x = y then s else x) i"
+  subgoal by (simp add: eqvt_def subst_var_formula_graph_aux_def)
+  subgoal by (simp)
+  apply (clarify)
+  subgoal for P \<phi> s y by (rule formula.strong_exhaust[of \<phi> P]) (auto)
+  apply (auto)
+done
+nominal_termination (eqvt)
+  by lexicographic_order
+
+
 subsection\<open>Small-step semantics\<close>
 
 inductive
@@ -342,5 +386,12 @@ inductive command_typing :: "header_table \<Rightarrow> ty_env \<Rightarrow> cmd
   ("_, _ \<turnstile> _ : _" [50,50,50,50] 60)
 where
   TC_Skip:      "\<lbrakk> \<tau>\<^sub>2 = Refinement y \<tau>\<^sub>1 (heap_eq HT y x)  \<rbrakk>
-                \<Longrightarrow> HT, \<Gamma> \<turnstile> Skip : ((x : \<tau>\<^sub>1) \<rightarrow> \<tau>\<^sub>2)"
+                \<Longrightarrow> HT, \<Gamma> \<turnstile> Skip : ((x : \<tau>\<^sub>1) \<rightarrow> \<tau>\<^sub>2)" |
+  TC_Seq:       "\<lbrakk> HT, \<Gamma> \<turnstile> c\<^sub>1 : ((x : \<tau>\<^sub>1) \<rightarrow> \<tau>12); HT, (\<Gamma>, x : \<tau>\<^sub>1) \<turnstile> c\<^sub>2 : ((y : \<tau>12) \<rightarrow> \<tau>22) \<rbrakk>
+                \<Longrightarrow> HT, \<Gamma> \<turnstile> Seq c\<^sub>1 c\<^sub>2 : ((x : \<tau>\<^sub>1) \<rightarrow> (Substitution \<tau>22 y \<tau>12))" |
+  TC_If:        "\<lbrakk> (\<Gamma>; \<tau>\<^sub>1) \<turnstile>\<^sub>f \<phi> : Bool;
+                   HT, \<Gamma> \<turnstile> c\<^sub>1 : ((x : Refinement y \<tau>\<^sub>1 \<phi>[y/var_heap]\<^sub>f) \<rightarrow> \<tau>12);
+                   HT, \<Gamma> \<turnstile> c\<^sub>2 : ((x : Refinement y \<tau>\<^sub>1 (Not \<phi>[y/var_heap]\<^sub>f)) \<rightarrow> \<tau>22) \<rbrakk>
+                \<Longrightarrow> HT, \<Gamma> \<turnstile> (If \<phi> c\<^sub>1 c\<^sub>2) : ((x : \<tau>\<^sub>1) \<rightarrow>
+                  Choice (Refinement y \<tau>12 \<phi>[x/var_heap]\<^sub>f) (Refinement y \<tau>22 (Not \<phi>[x/heap]\<^sub>f)))"
 end
