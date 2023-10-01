@@ -29,6 +29,11 @@ datatype field = Field field_name nat
 datatype header_type = HeaderType string "field list"
 type_synonym header_table = "(instanc \<times> header_type) list"
 
+instantiation field :: pure begin
+  definition permute_field :: "perm \<Rightarrow> field \<Rightarrow> field" where
+    "permute_field _ f = f"
+  instance by standard (auto simp add: permute_field_def)
+end
 instantiation header_type :: pure begin
   definition permute_header_type :: "perm \<Rightarrow> header_type \<Rightarrow> header_type" where
     "permute_header_type _ ht = ht"

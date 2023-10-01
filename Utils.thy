@@ -15,6 +15,9 @@ lemma bind_eqvt[eqvt]: "p \<bullet> Option.bind x f = Option.bind (p \<bullet> x
 lemma map_of_eqvt[eqvt]: "p \<bullet> map_of xs x = map_of (p \<bullet> xs) (p \<bullet> x)"
   by (induct xs) auto
 
+lemma concat_eqvt[eqvt]: "p \<bullet> (concat xss) = concat (p \<bullet> xss)"
+  by (induction xss) (auto simp add: append_eqvt)
+
 lemma fresh_star_empty[simp]: "{} \<sharp>* x" by (simp add: fresh_star_def)
 
 section\<open>Headers\<close>
@@ -42,6 +45,15 @@ fun header_field_to_range_helper :: "nat \<Rightarrow> field list \<Rightarrow> 
 
 fun header_field_to_range :: "header_type \<Rightarrow> field_name \<Rightarrow> (nat \<times> nat)" where
   "header_field_to_range (HeaderType _ fs) tgt = header_field_to_range_helper 0 fs tgt"
+lemma header_field_to_range_eqvt[eqvt]:
+  "p \<bullet> header_field_to_range ht f = header_field_to_range (p \<bullet> ht) (p \<bullet> f)"
+  by (simp add: permute_pure)
+
+fun field_list_to_range :: "field list \<Rightarrow> field_name \<Rightarrow> (nat \<times> nat)" where
+  "field_list_to_range fs tgt = header_field_to_range_helper 0 fs tgt"
+lemma field_list_to_range_eqvt[eqvt]:
+  "p \<bullet> field_list_to_range fs tgt = field_list_to_range (p \<bullet> fs) (p \<bullet> tgt)"
+  by (simp add: permute_pure)
 
 fun header_length :: "header_type \<Rightarrow> nat" where
   "header_length (HeaderType _ fs) = (\<Sum>f\<leftarrow>fs. case f of field.Field x fl \<Rightarrow> fl)"
