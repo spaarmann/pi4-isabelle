@@ -388,6 +388,10 @@ done
 nominal_termination (eqvt)
   by lexicographic_order
 
+(* TODO: Make a helper function that ANDs a list of formulas, possibly use it above. *)
+(* TODO: Make a definition for the \<epsilon> heap here, use it to finish TC_Remit. *)
+(* TODO: Consider replacing all uses of \<epsilon> as environment with \<E>? *)
+
 (*
   "fields_eq_except (HeaderType _ (f#fs)) i g x y = (let rem = fields_eq_except 
 (if f = g then FTrue else
@@ -471,5 +475,14 @@ where
                    \<phi>f = fields_eq_except ht f i y x;
                    \<phi>feq = Eq (Slice (SlInstance y i) n m) e[x/heap]\<^sub>e \<rbrakk>
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> (Assign i f e) : ((x : \<tau>\<^sub>1) \<rightarrow> Refinement y Top
-                      (And \<phi>pkt (And \<phi>i (And \<phi>f \<phi>feq))))"
+                      (And \<phi>pkt (And \<phi>i (And \<phi>f \<phi>feq))))" |
+  (* TODO: Skipping Extract for now, want to do chomp last. *)
+  (* TODO: Introduce a helper function for slicing an entire instance and use it here and in the equality helpers above *)
+  TC_Remit:     "\<lbrakk> ty_includes \<Gamma> \<tau>\<^sub>1 i;
+                   map_of HT i = Some ht;
+                   header_length ht = n;
+                   \<phi> = And (Eq (Packet z PktIn) (Bv []))
+                           (Eq (Packet z PktOut) (Slice (SlInstance x i) 0 n))\<rbrakk>
+                 \<Longrightarrow> HT, \<Gamma> \<turnstile> Remit i : ((x : \<tau>\<^sub>1) \<rightarrow> Sigma y (Refinement z \<tau>\<^sub>1 (heap_eq HT z x))
+                                                           (Refinement z Top \<phi>))"
 end
