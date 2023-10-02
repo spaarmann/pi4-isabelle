@@ -324,92 +324,12 @@ definition ty_includes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<
 definition ty_excludes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<Rightarrow> bool" where
   "ty_excludes \<Gamma> \<tau> i = (\<forall>\<epsilon>. \<epsilon> \<TTurnstile> \<Gamma> \<longrightarrow> (\<forall>h \<in> \<lbrakk>\<tau> in \<epsilon>\<rbrakk>\<^sub>t. i \<notin> heap_dom h))"
 
-text\<open>Helpers for constructing various predicate formulas.\<close>
 
-nominal_function heap_instance_eq :: "header_table \<Rightarrow> var \<Rightarrow> var \<Rightarrow> formula" where
-  "heap_instance_eq ((i,ht)#HT) x y = (let hl = header_length ht in
-   And (Eq (Slice (SlInstance x i) 0 hl) (Slice (SlInstance y i) 0 hl))
-       (heap_instance_eq HT x y))" |
-  "heap_instance_eq [] x y = FTrue"
-  subgoal by (auto simp add: eqvt_def heap_instance_eq_graph_aux_def Let_def)
-  subgoal by (simp)
-  apply (clarify)
-  subgoal for P HT x y by (rule list.exhaust) (auto)
-  apply (auto)
-done
-nominal_termination (eqvt)
-  by lexicographic_order
 
-nominal_function heap_eq :: "header_table \<Rightarrow> var \<Rightarrow> var \<Rightarrow> formula" where
-  "heap_eq HT x y = And (Eq (Packet x PktIn) (Packet y PktIn))
-                    (And (Eq (Packet x PktOut) (Packet y PktOut))
-                    (heap_instance_eq HT x y))"
-  subgoal by (auto simp add: eqvt_def heap_eq_graph_aux_def Let_def)
-  apply (auto)
-done
-nominal_termination (eqvt)
-  by lexicographic_order
-
-nominal_function instances_eq_except :: "header_table \<Rightarrow> instanc \<Rightarrow> var \<Rightarrow> var \<Rightarrow> formula" where
-  "instances_eq_except HT i x y = heap_instance_eq [(k,ht)\<leftarrow>HT. k \<noteq> i] x y"
-  subgoal by (auto simp add: eqvt_def instances_eq_except_graph_aux_def Let_def)
-  apply (auto)
-done
-nominal_termination (eqvt)
-  by lexicographic_order
-
-nominal_function fields_eq_except_helper :: "field list \<Rightarrow> instanc \<Rightarrow> field_name \<Rightarrow> var \<Rightarrow> var \<Rightarrow> formula"
-where
-  "fields_eq_except_helper ((Field f _)#fs) i g x y = (let rem = fields_eq_except_helper fs i g x y in
-    let this = if f = g then FTrue else let (n, m) = field_list_to_range fs f in
-      Eq (Slice (SlInstance x i) n m) (Slice (SlInstance y i) n m) in
-    And this rem)" |
-  "fields_eq_except_helper [] _ _ _ _ = FTrue"
-  subgoal by (auto simp add: eqvt_def fields_eq_except_helper_graph_aux_def)
-  subgoal by (simp)
-  apply (clarify)
-  subgoal for P fs i g x y
-    apply (rule list.exhaust) apply (auto)
-    by (rule field.exhaust) (auto)
-  apply (auto)
-done
-nominal_termination (eqvt)
-  by lexicographic_order
-
-nominal_function fields_eq_except :: "header_type \<Rightarrow> instanc \<Rightarrow> field_name \<Rightarrow> var \<Rightarrow> var \<Rightarrow> formula"
-where
-  "fields_eq_except (HeaderType _ fs) i g x y = fields_eq_except_helper fs i g x y"
-  subgoal by (auto simp add: eqvt_def fields_eq_except_graph_aux_def)
-  subgoal by (simp)
-  apply (clarify)
-  subgoal for P ht i g x y by (rule header_type.exhaust) (auto)
-  apply (auto)
-done
-nominal_termination (eqvt)
-  by lexicographic_order
 
 (* TODO: Make a helper function that ANDs a list of formulas, possibly use it above. *)
 (* TODO: Make a definition for the \<epsilon> heap here, use it to finish TC_Remit. *)
 (* TODO: Consider replacing all uses of \<epsilon> as environment with \<E>? *)
-
-(*
-  "fields_eq_except (HeaderType _ (f#fs)) i g x y = (let rem = fields_eq_except 
-(if f = g then FTrue else
-    let (n, m) = field_list_to_range fs f in
-      And (Eq (Slice (SlInstance x i) n m) (Slice (SlInstance y i) n m))
-          fields_eq_except 
-
-nominal_function fields_eq_except :: "header_type \<Rightarrow> instanc \<Rightarrow> field_name \<Rightarrow> var \<Rightarrow> var \<Rightarrow> formula"
-where
-  "fields_eq_except ht i f x y = (case ht of (HeaderType _ fs) \<Rightarrow> foldr (\<lambda>g \<phi>.
-    (let (n, m) = header_field_to_range ht g in
-      And (Eq (Slice (SlInstance x i) n m) (Slice (SlInstance y i) n m)) \<phi>))
-    [g. gf\<leftarrow>fs, (case gf of (Field g _) \<Rightarrow> g \<noteq> f)] FTrue)"
-  subgoal apply (auto simp add: eqvt_def fields_eq_except_graph_aux_def Let_def lfp_eqvt )
-find_theorems "_ \<bullet> (\<lambda>_. _)_"
-
-thm eqvts
-*)
 
 (* TODO: I can't get the prios for this and ty_env_add_heap (";") such that this is not ambigious *)
 inductive exp_typing :: "ty_env \<Rightarrow> exp \<Rightarrow> base_ty \<Rightarrow> bool"
@@ -453,7 +373,7 @@ where
 inductive command_typing :: "header_table \<Rightarrow> ty_env \<Rightarrow> cmd \<Rightarrow> pi_ty \<Rightarrow> bool"
   ("_, _ \<turnstile> _ : _" [50,50,50,50] 60)
 where
-  TC_Skip:      "\<lbrakk> \<tau>\<^sub>2 = Refinement y \<tau>\<^sub>1 (heap_eq HT y x)  \<rbrakk>
+  TC_Skip:      "\<lbrakk> \<tau>\<^sub>2 = Refinement y \<tau>\<^sub>1 (mk_heap_eq HT y x)  \<rbrakk>
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> Skip : ((x : \<tau>\<^sub>1) \<rightarrow> \<tau>\<^sub>2)" |
   TC_Seq:       "\<lbrakk> HT, \<Gamma> \<turnstile> c\<^sub>1 : ((x : \<tau>\<^sub>1) \<rightarrow> \<tau>12); HT, (\<Gamma>, x : \<tau>\<^sub>1) \<turnstile> c\<^sub>2 : ((y : \<tau>12) \<rightarrow> \<tau>22) \<rbrakk>
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> Seq c\<^sub>1 c\<^sub>2 : ((x : \<tau>\<^sub>1) \<rightarrow> (Substitution \<tau>22 y \<tau>12))" |
@@ -469,10 +389,10 @@ where
                    (\<Gamma>; \<tau>\<^sub>1) \<turnstile>\<^sub>e e : BV;
                    \<phi>pkt = And (Eq (Packet y PktIn) (Packet x PktIn))
                               (Eq (Packet y PktOut) (Packet x PktOut));
-                   \<phi>i = instances_eq_except HT i y x;
+                   \<phi>i = mk_instances_eq_except HT i y x;
                    map_of HT i = Some ht;
                    header_field_to_range ht f = (n, m);
-                   \<phi>f = fields_eq_except ht f i y x;
+                   \<phi>f = mk_fields_eq_except ht f i y x;
                    \<phi>feq = Eq (Slice (SlInstance y i) n m) e[x/heap]\<^sub>e \<rbrakk>
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> (Assign i f e) : ((x : \<tau>\<^sub>1) \<rightarrow> Refinement y Top
                       (And \<phi>pkt (And \<phi>i (And \<phi>f \<phi>feq))))" |
@@ -483,6 +403,6 @@ where
                    header_length ht = n;
                    \<phi> = And (Eq (Packet z PktIn) (Bv []))
                            (Eq (Packet z PktOut) (Slice (SlInstance x i) 0 n))\<rbrakk>
-                 \<Longrightarrow> HT, \<Gamma> \<turnstile> Remit i : ((x : \<tau>\<^sub>1) \<rightarrow> Sigma y (Refinement z \<tau>\<^sub>1 (heap_eq HT z x))
+                 \<Longrightarrow> HT, \<Gamma> \<turnstile> Remit i : ((x : \<tau>\<^sub>1) \<rightarrow> Sigma y (Refinement z \<tau>\<^sub>1 (mk_heap_eq HT z x))
                                                            (Refinement z Top \<phi>))"
 end

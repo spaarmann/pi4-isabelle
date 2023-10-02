@@ -134,4 +134,98 @@ nominal_termination (eqvt)
 lemma env_update_eqvt[eqvt]: "p \<bullet> \<epsilon>[x \<rightarrow> h] = (p \<bullet> \<epsilon>)[p \<bullet> x \<rightarrow> p \<bullet> h]"
   by (induct \<epsilon>) (auto simp add: permute_pure env_update_def)
 
+
+section\<open>Helper for creating formulas\<close>
+
+text\<open>Creates a formula that is the AND of all given subformulas.\<close>
+fun mk_and :: "formula list \<Rightarrow> formula" where
+  "mk_and [\<phi>] = \<phi>" |
+  "mk_and (\<phi>#\<phi>s) = And \<phi> (mk_and \<phi>s)" |
+  "mk_and [] = FTrue"
+
+text\<open>Predicate for whether an entire instance is equal in the given two heaps.\<close>
+nominal_function mk_instance_eq :: "header_type \<Rightarrow> instanc \<Rightarrow> var \<Rightarrow> var \<Rightarrow> formula" where
+  "mk_instance_eq ht i x y = (let hl = header_length ht in
+    Eq (Slice (SlInstance x i) 0 hl) (Slice (SlInstance y i) 0 hl))"
+  subgoal by (auto simp add: eqvt_def mk_instance_eq_graph_aux_def Let_def)
+  apply (auto)
+done
+nominal_termination (eqvt)
+  by lexicographic_order
+
+nominal_function foo :: "header_table \<Rightarrow> var \<Rightarrow> var \<Rightarrow> formula" where
+  "foo HT x y = mk_and [mk_instance_eq ht i x y. (i, ht) \<leftarrow> HT]"
+  subgoal apply (auto simp add: eqvt_def foo_graph_aux_def Let_def)
+
+text\<open>Instance equality:
+Predicate for whether two heaps are equivalent in terms of all possible instances.
+Corresponds to \<equiv>i in the paper.\<close>
+nominal_function mk_heap_instance_eq :: "header_table \<Rightarrow> var \<Rightarrow> var \<Rightarrow> formula" where
+  "mk_heap_instance_eq ((i,ht)#HT) x y = (let hl = header_length ht in
+   And (Eq (Slice (SlInstance x i) 0 hl) (Slice (SlInstance y i) 0 hl))
+       (mk_heap_instance_eq HT x y))" |
+  "mk_heap_instance_eq [] x y = FTrue"
+  subgoal by (auto simp add: eqvt_def mk_heap_instance_eq_graph_aux_def Let_def)
+  subgoal by (simp)
+  apply (clarify)
+  subgoal for P HT x y by (rule list.exhaust) (auto)
+  apply (auto)
+done
+nominal_termination (eqvt)
+  by lexicographic_order
+
+text\<open>Strict equality:
+Predicate for whether two heaps are equal in all instances and the in/out buffers.
+Corresponds to \<equiv> in the paper.\<close>
+nominal_function mk_heap_eq :: "header_table \<Rightarrow> var \<Rightarrow> var \<Rightarrow> formula" where
+  "mk_heap_eq HT x y = And (Eq (Packet x PktIn) (Packet y PktIn))
+                    (And (Eq (Packet x PktOut) (Packet y PktOut))
+                    (mk_heap_instance_eq HT x y))"
+  subgoal by (auto simp add: eqvt_def mk_heap_eq_graph_aux_def Let_def)
+  apply (auto)
+done
+nominal_termination (eqvt)
+  by lexicographic_order
+
+text\<open>Like mk_heap_instance_eq but ignoring the given instance.\<close>
+nominal_function mk_instances_eq_except :: "header_table \<Rightarrow> instanc \<Rightarrow> var \<Rightarrow> var \<Rightarrow> formula" where
+  "mk_instances_eq_except HT i x y = mk_heap_instance_eq [(k,ht)\<leftarrow>HT. k \<noteq> i] x y"
+  subgoal by (auto simp add: eqvt_def mk_instances_eq_except_graph_aux_def Let_def)
+  apply (auto)
+done
+nominal_termination (eqvt)
+  by lexicographic_order
+
+
+nominal_function mk_fields_eq_except_helper :: "field list \<Rightarrow> instanc \<Rightarrow> field_name \<Rightarrow> var \<Rightarrow> var \<Rightarrow> formula"
+where
+  "mk_fields_eq_except_helper ((Field f _)#fs) i g x y = (let rem = mk_fields_eq_except_helper fs i g x y in
+    let this = if f = g then FTrue else let (n, m) = field_list_to_range fs f in
+      Eq (Slice (SlInstance x i) n m) (Slice (SlInstance y i) n m) in
+    And this rem)" |
+  "mk_fields_eq_except_helper [] _ _ _ _ = FTrue"
+  subgoal by (auto simp add: eqvt_def mk_fields_eq_except_helper_graph_aux_def)
+  subgoal by (simp)
+  apply (clarify)
+  subgoal for P fs i g x y
+    apply (rule list.exhaust) apply (auto)
+    by (rule field.exhaust) (auto)
+  apply (auto)
+done
+nominal_termination (eqvt)
+  by lexicographic_order
+
+text\<open>Predicate for equality of all fields of a specific instance except for one.\<close>
+nominal_function mk_fields_eq_except :: "header_type \<Rightarrow> instanc \<Rightarrow> field_name \<Rightarrow> var \<Rightarrow> var \<Rightarrow> formula"
+where
+  "mk_fields_eq_except (HeaderType _ fs) i g x y = mk_fields_eq_except_helper fs i g x y"
+  subgoal by (auto simp add: eqvt_def mk_fields_eq_except_graph_aux_def)
+  subgoal by (simp)
+  apply (clarify)
+  subgoal for P ht i g x y by (rule header_type.exhaust) (auto)
+  apply (auto)
+done
+nominal_termination (eqvt)
+  by lexicographic_order
+
 end
