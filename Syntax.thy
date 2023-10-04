@@ -108,7 +108,7 @@ where
   "\<Gamma>, x : \<tau> = AList.update x \<tau> \<Gamma>"
 
 definition ty_env_add_heap :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> ty_env"
-  ("_; _" [50,51] 0)
+  ("_; _" [50,51] 50)
 where
   "(\<Gamma>; \<tau>) = AList.update var_heap \<tau> \<Gamma>"
 

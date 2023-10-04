@@ -325,9 +325,6 @@ definition ty_excludes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<
   "ty_excludes \<Gamma> \<tau> i = (\<forall>\<epsilon>. \<epsilon> \<TTurnstile> \<Gamma> \<longrightarrow> (\<forall>h \<in> \<lbrakk>\<tau> in \<epsilon>\<rbrakk>\<^sub>t. i \<notin> heap_dom h))"
 
 
-
-
-(* TODO: Make a helper function that ANDs a list of formulas, possibly use it above. *)
 (* TODO: Make a definition for the \<epsilon> heap here, use it to finish TC_Remit. *)
 (* TODO: Consider replacing all uses of \<epsilon> as environment with \<E>? *)
 
@@ -389,7 +386,7 @@ where
                    (\<Gamma>; \<tau>\<^sub>1) \<turnstile>\<^sub>e e : BV;
                    \<phi>pkt = And (Eq (Packet y PktIn) (Packet x PktIn))
                               (Eq (Packet y PktOut) (Packet x PktOut));
-                   \<phi>i = mk_instances_eq_except HT i y x;
+                   \<phi>i = mk_heap_eq_instances_except HT i y x;
                    map_of HT i = Some ht;
                    header_field_to_range ht f = (n, m);
                    \<phi>f = mk_fields_eq_except ht f i y x;
@@ -405,4 +402,5 @@ where
                            (Eq (Packet z PktOut) (Slice (SlInstance x i) 0 n))\<rbrakk>
                  \<Longrightarrow> HT, \<Gamma> \<turnstile> Remit i : ((x : \<tau>\<^sub>1) \<rightarrow> Sigma y (Refinement z \<tau>\<^sub>1 (mk_heap_eq HT z x))
                                                            (Refinement z Top \<phi>))"
+
 end
