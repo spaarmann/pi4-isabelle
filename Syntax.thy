@@ -25,30 +25,43 @@ instantiation packet :: pure begin
   instance by standard (auto simp add: permute_packet_def)
 end
 
-datatype field = Field field_name nat
-datatype header_type = HeaderType string "field list"
+record field =
+  field_name :: field_name
+  field_length :: nat
+instantiation field_ext :: (type) pure begin
+  definition permute_field_ext :: "perm \<Rightarrow> 'a field_ext \<Rightarrow> 'a field_ext" where
+    "permute_field_ext p f = f"
+  instance by standard (auto simp add: permute_field_ext_def)
+end
+
+record header_type =
+  header_name :: string
+  header_fields :: "field list"
 type_synonym header_table = "(instanc \<times> header_type) list"
-
-instantiation field :: pure begin
-  definition permute_field :: "perm \<Rightarrow> field \<Rightarrow> field" where
-    "permute_field _ f = f"
-  instance by standard (auto simp add: permute_field_def)
-end
-instantiation header_type :: pure begin
-  definition permute_header_type :: "perm \<Rightarrow> header_type \<Rightarrow> header_type" where
-    "permute_header_type _ ht = ht"
-  instance by standard (auto simp add: permute_header_type_def)
+instantiation header_type_ext :: (type) pure begin
+  definition permute_header_type_ext :: "perm \<Rightarrow> 'a header_type_ext \<Rightarrow> 'a header_type_ext" where
+    "permute_header_type_ext p \<eta> = \<eta>"
+  instance by standard (auto simp add: permute_header_type_ext_def)
 end
 
-datatype headers = Headers "instanc \<Rightarrow> bv option"
-datatype heap = Heap bv bv headers
+type_synonym headers = "instanc \<Rightarrow> bv option"
+
+record heap = 
+  heap_pkt_in :: bv
+  heap_pkt_out :: bv
+  heap_headers :: headers
+instantiation heap_ext :: (type) pure begin
+  definition permute_heap_ext :: "perm \<Rightarrow> 'a heap_ext \<Rightarrow> 'a heap_ext" where
+    "permute_heap_ext p h = h"
+  instance by standard (auto simp add: permute_heap_ext_def)
+end
 
 (* Easier to work with than "var \<Rightarrow> heap" with Nominal2 because it has a finite support (I think) *)
 type_synonym env = "(var \<times> heap) list"
 
 definition env_update :: "env \<Rightarrow> var \<Rightarrow> heap \<Rightarrow> env" ("_[_ \<rightarrow> _]" [1000, 49, 49] 1000)
 where
-  "\<epsilon>[x \<rightarrow> h] = AList.update x h \<epsilon>"
+  "\<E>[x \<rightarrow> h] = AList.update x h \<E>"
 
 section\<open>Expressions and Formulas\<close>
 
@@ -115,7 +128,7 @@ where
 section\<open>Commands\<close>
 
 datatype cmd =
-  Skip | Seq cmd cmd | If formula cmd cmd | Assign instanc field_name exp |
+  Skip | Seq cmd cmd | If formula cmd cmd | Assign instanc string exp |
   Extract instanc | Remit instanc | Add instanc |
   Reset | Ascribe cmd pi_ty
 
