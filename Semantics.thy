@@ -403,12 +403,25 @@ where
                    \<phi>\<^sub>f\<^sub>e\<^sub>q = Eq (mk_field_read \<eta> \<iota> f y) e[x/heap]\<^sub>e \<rbrakk>
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> (Assign \<iota> f e) : ((x : \<tau>\<^sub>1) \<rightarrow> Refinement y Top
                       (And \<phi>\<^sub>p\<^sub>k\<^sub>t (And \<phi>\<^sub>\<iota> (And \<phi>\<^sub>f \<phi>\<^sub>f\<^sub>e\<^sub>q))))" |
-  (* TODO: Skipping Extract for now, want to do chomp last. *)
+  (* TODO: T-Extract. Skipping Extract for now, want to do chomp last. *)
   TC_Remit:     "\<lbrakk> ty_includes \<Gamma> \<tau>\<^sub>1 \<iota>;
                    map_of HT \<iota> = Some \<eta>;
                    \<phi> = And (Eq (Packet z PktIn) (Bv []))
                            (Eq (Packet z PktOut) (mk_inst_read \<eta> \<iota> x))\<rbrakk>
                  \<Longrightarrow> HT, \<Gamma> \<turnstile> Remit \<iota> : ((x : \<tau>\<^sub>1) \<rightarrow> Sigma y (Refinement z \<tau>\<^sub>1 (mk_heap_eq HT z x))
-                                                           (Refinement z (heap_ty_empty HT) \<phi>))"
+                                                           (Refinement z (heap_ty_empty HT) \<phi>))" |
+  TC_Add:       "\<lbrakk> ty_excludes \<Gamma> \<tau>\<^sub>1 \<iota>;
+                   map_of HT \<iota> = Some \<eta>; init_header \<eta> = bv;
+                   \<phi> = And (Eq (Packet z PktIn) (Packet z PktOut))
+                           (And (Eq (Packet z PktOut) (Bv [])) (Eq (mk_inst_read \<eta> \<iota> z) (Bv bv))) \<rbrakk>
+                \<Longrightarrow> HT, \<Gamma> \<turnstile> Add \<iota> : ((x : \<tau>\<^sub>1) \<rightarrow> Sigma y (Refinement z \<tau>\<^sub>1 (mk_heap_eq HT z x))
+                                                        (Refinement z (heap_ty_only HT \<iota>) \<phi>))" |
+  TC_Reset:     "\<lbrakk> \<phi>\<^sub>1 = And (Eq (Packet z PktOut) (Bv [])) (Eq (Packet z PktIn) (Packet x PktOut));
+                   \<phi>\<^sub>2 = And (Eq (Packet z PktOut) (Bv [])) (Eq (Packet z PktIn) (Packet x PktIn)) \<rbrakk>
+                \<Longrightarrow> HT, \<Gamma> \<turnstile> Reset : ((x : \<tau>\<^sub>1) \<rightarrow> Sigma y (Refinement z (heap_ty_empty HT) \<phi>\<^sub>1)
+                                                        (Refinement z (heap_ty_empty HT) \<phi>\<^sub>2))" |
+  TC_Ascribe:   "\<lbrakk> HT, \<Gamma> \<turnstile> c : \<sigma> \<rbrakk>
+                \<Longrightarrow> HT, \<Gamma> \<turnstile> Ascribe c \<sigma> : \<sigma>"
+  (* TODO: T-Sub *)
 
 end
