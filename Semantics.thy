@@ -4,9 +4,8 @@ no_notation inverse_divide (infixl "'/" 70) \<comment> \<open>avoid clash with d
 
 text\<open>For next meeting:
 Questions/Help:
-- If "\<Gamma>;\<tau>" is just syntax for extending \<Gamma>, can I define it without making the grammar abiguous?
+- heap_ty_empty definition.
 To talk about:
-- Exp/formula typing as judgement with extra parameter or "\<Gamma>;\<tau>" as \<Gamma>[var_heap -> \<tau>]?
 - Well-formedness predicates from section 5.4 of the thesis.
 - In the thesis, "env" also maps bit variables to single bits. This is mentioned off-hand in one
   place in the paper too I think.
@@ -325,6 +324,19 @@ definition ty_includes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<
 definition ty_excludes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<Rightarrow> bool" where
   "ty_excludes \<Gamma> \<tau> \<iota> = (\<forall>\<E>. \<E> \<TTurnstile> \<Gamma> \<longrightarrow> (\<forall>h \<in> \<lbrakk>\<tau> in \<E>\<rbrakk>\<^sub>t. \<iota> \<notin> heap_dom h))"
 
+(* TODO: How do I actually write this? Just need some arbitrary variable that gets bound in the second type *)
+text\<open>Type denoting the empty heap, \<epsilon> in the paper.\<close>
+definition heap_ty_empty :: "header_table \<Rightarrow> heap_ty" where
+  "heap_ty_empty HT = Refinement (x) Top (mk_and [Not (IsValid x \<iota>). (\<iota>, _) \<leftarrow> HT])"
+
+text\<open>Type denoting heaps containing exclusively \<iota>, written as just \<iota> in the paper.\<close>
+definition heap_ty_only :: "header_table \<Rightarrow> instanc \<Rightarrow> heap_ty" where
+  "heap_ty_only HT \<iota> = Refinement x Top (And (IsValid x \<iota>)
+                                             (mk_and [Not (IsValid x \<iota>'). (\<iota>', _) \<leftarrow> HT, \<iota> \<noteq> \<iota>']))"
+
+text\<open>Type denoting heaps containing at least \<iota>, written as \<iota>\<^sup>~ in the paper.\<close>
+definition heap_ty_at_least :: "instanc \<Rightarrow> heap_ty" where
+  "heap_ty_at_least \<iota> = Refinement x Top (IsValid x \<iota>)"
 
 (* TODO: Make a definition for the \<epsilon> heap here, use it to finish TC_Remit. *)
 
@@ -392,12 +404,11 @@ where
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> (Assign \<iota> f e) : ((x : \<tau>\<^sub>1) \<rightarrow> Refinement y Top
                       (And \<phi>\<^sub>p\<^sub>k\<^sub>t (And \<phi>\<^sub>\<iota> (And \<phi>\<^sub>f \<phi>\<^sub>f\<^sub>e\<^sub>q))))" |
   (* TODO: Skipping Extract for now, want to do chomp last. *)
-  (* TODO: Finish TC_Remit with \<epsilon> heap. *)
   TC_Remit:     "\<lbrakk> ty_includes \<Gamma> \<tau>\<^sub>1 \<iota>;
                    map_of HT \<iota> = Some \<eta>;
                    \<phi> = And (Eq (Packet z PktIn) (Bv []))
                            (Eq (Packet z PktOut) (mk_inst_read \<eta> \<iota> x))\<rbrakk>
                  \<Longrightarrow> HT, \<Gamma> \<turnstile> Remit \<iota> : ((x : \<tau>\<^sub>1) \<rightarrow> Sigma y (Refinement z \<tau>\<^sub>1 (mk_heap_eq HT z x))
-                                                           (Refinement z Top \<phi>))"
+                                                           (Refinement z (heap_ty_empty HT) \<phi>))"
 
 end
