@@ -65,7 +65,7 @@ where
   "(Packet x p)[s/y]\<^sub>e = (if x = y then Packet s p else Packet x p)" |
   "(Len x p)[s/y]\<^sub>e = (if x = y then Len s p else Len x p)" |
   "(Slice (SlPacket x p) n m)[s/y]\<^sub>e = Slice (SlPacket (if x = y then s else x) p) n m" |
-  "(Slice (SlInstance x i) n m)[s/y]\<^sub>e = Slice (SlInstance (if x = y then s else x) i) n m"
+  "(Slice (SlInstance x \<iota>) n m)[s/y]\<^sub>e = Slice (SlInstance (if x = y then s else x) \<iota>) n m"
   subgoal by (simp add: eqvt_def subst_var_exp_graph_aux_def)
   subgoal by (simp)
   apply (clarify)
@@ -87,7 +87,7 @@ where
   "(Gt e\<^sub>1 e\<^sub>2)[s/y]\<^sub>f = Gt e\<^sub>1[s/y]\<^sub>e e\<^sub>2[s/y]\<^sub>e" |
   "(And \<phi>\<^sub>1 \<phi>\<^sub>2)[s/y]\<^sub>f = And \<phi>\<^sub>1[s/y]\<^sub>f \<phi>\<^sub>2[s/y]\<^sub>f" |
   "(Not \<phi>)[s/y]\<^sub>f = Not \<phi>[s/y]\<^sub>f" |
-  "(IsValid x i)[s/y]\<^sub>f = IsValid (if x = y then s else x) i"
+  "(IsValid x \<iota>)[s/y]\<^sub>f = IsValid (if x = y then s else x) \<iota>"
   subgoal by (simp add: eqvt_def subst_var_formula_graph_aux_def)
   subgoal by (simp)
   apply (clarify)
@@ -121,9 +121,9 @@ where
                 \<Longrightarrow> (In, Out, H, Slice (SlPacket var_heap PktIn) n m) \<rightarrow>\<^sub>e Bv bs" |
   E_SlicePktOut:"\<lbrakk> 0 \<le> n \<and> n < m \<and> m \<le> length Out + 1; slice Out n m = bs \<rbrakk>
                 \<Longrightarrow> (In, Out, H, Slice (SlPacket var_heap PktOut) n m) \<rightarrow>\<^sub>e Bv bs" |
-  E_SliceInst:  "\<lbrakk> header_lookup H i = Some bv; 0 \<le> n \<and> n < m \<and> m \<le> length bv + 1;
+  E_SliceInst:  "\<lbrakk> H \<iota> = Some bv; 0 \<le> n \<and> n < m \<and> m \<le> length bv + 1;
                    slice bv n m = bs \<rbrakk>
-                \<Longrightarrow> (In, Out, H, Slice (SlInstance var_heap i) n m) \<rightarrow>\<^sub>e Bv bs"
+                \<Longrightarrow> (In, Out, H, Slice (SlInstance var_heap \<iota>) n m) \<rightarrow>\<^sub>e Bv bs"
 
 inductive exp_small_steps :: "(bv \<times> bv \<times> headers \<times> exp) \<Rightarrow> exp \<Rightarrow> bool" ("_ \<rightarrow>\<^sub>e* _" [50,50] 50)
 where
@@ -159,10 +159,10 @@ where
                 \<Longrightarrow> (In, Out, H, Not f\<^sub>1) \<rightarrow>\<^sub>f f\<^sub>1'" |
   F_NotTrue:    "(In, Out, H, Not FTrue) \<rightarrow>\<^sub>f FFalse" |
   F_NotFalse:   "(In, Out, H, Not FFalse) \<rightarrow>\<^sub>f FTrue" |
-  F_IsValidTrue:"\<lbrakk> header_lookup H i = Some _ \<rbrakk>
-                \<Longrightarrow> (In, Out, H, IsValid x i) \<rightarrow>\<^sub>f FTrue" |
-  F_IsValidFalse:"\<lbrakk> header_lookup H i = None \<rbrakk>
-                \<Longrightarrow> (In, Out, H, IsValid var_heap i) \<rightarrow>\<^sub>f FFalse"
+  F_IsValidTrue:"\<lbrakk> H \<iota> = Some _ \<rbrakk>
+                \<Longrightarrow> (In, Out, H, IsValid x \<iota>) \<rightarrow>\<^sub>f FTrue" |
+  F_IsValidFalse:"\<lbrakk> H \<iota> = None \<rbrakk>
+                \<Longrightarrow> (In, Out, H, IsValid var_heap \<iota>) \<rightarrow>\<^sub>f FFalse"
 
 inductive formula_small_steps :: "(bv \<times> bv \<times> headers \<times> formula) \<Rightarrow> formula \<Rightarrow> bool" ("_ \<rightarrow>\<^sub>f* _" [0,50] 50)
 where
@@ -170,25 +170,26 @@ where
   FS_Step:   "\<lbrakk> (In, Out, H, f) \<rightarrow>\<^sub>f f''; (In, Out, H, f'') \<rightarrow>\<^sub>f* f' \<rbrakk>
              \<Longrightarrow> (In, Out, H, f) \<rightarrow>\<^sub>f* f'"
 
+
 subsection\<open>Denotational semantics\<close>
 
 nominal_function exp_sem :: "exp \<Rightarrow> env \<Rightarrow> val option" ("\<lbrakk>_ in _\<rbrakk>\<^sub>e" [50,60] 50)
 where
-  "\<lbrakk>Num n in \<epsilon>\<rbrakk>\<^sub>e = Some (VNum n)" |
-  "\<lbrakk>Bv bv in \<epsilon>\<rbrakk>\<^sub>e = Some (VBv bv)" |
-  "\<lbrakk>Plus e\<^sub>1 e\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>e = (case (\<lbrakk>e\<^sub>1 in \<epsilon>\<rbrakk>\<^sub>e, \<lbrakk>e\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>e) of
+  "\<lbrakk>Num n in \<E>\<rbrakk>\<^sub>e = Some (VNum n)" |
+  "\<lbrakk>Bv bv in \<E>\<rbrakk>\<^sub>e = Some (VBv bv)" |
+  "\<lbrakk>Plus e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = (case (\<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e, \<lbrakk>e\<^sub>2 in \<E>\<rbrakk>\<^sub>e) of
     (Some (VNum n\<^sub>1), Some (VNum n\<^sub>2)) \<Rightarrow> Some (VNum (n\<^sub>1 + n\<^sub>2)) | _ \<Rightarrow> None)" |
-  "\<lbrakk>Concat e\<^sub>1 e\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>e = (case (\<lbrakk>e\<^sub>1 in \<epsilon>\<rbrakk>\<^sub>e, \<lbrakk>e\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>e) of
+  "\<lbrakk>Concat e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = (case (\<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e, \<lbrakk>e\<^sub>2 in \<E>\<rbrakk>\<^sub>e) of
     (Some (VBv bv\<^sub>1), Some (VBv bv\<^sub>2)) \<Rightarrow> Some (VBv (bv\<^sub>1 @ bv\<^sub>2)) | _ \<Rightarrow> None)" |
-  "\<lbrakk>Packet x p in \<epsilon>\<rbrakk>\<^sub>e = map_option (\<lambda>bv. VBv bv) (env_lookup_packet \<epsilon> x p)" |
-  "\<lbrakk>Len x p in \<epsilon>\<rbrakk>\<^sub>e = map_option (\<lambda>bv. VNum (length bv)) (env_lookup_packet \<epsilon> x p)" |
-  "\<lbrakk>Slice sl n m in \<epsilon>\<rbrakk>\<^sub>e = Option.bind (env_lookup_sliceable \<epsilon> sl)
+  "\<lbrakk>Packet x p in \<E>\<rbrakk>\<^sub>e = map_option (\<lambda>bv. VBv bv) (env_lookup_packet \<E> x p)" |
+  "\<lbrakk>Len x p in \<E>\<rbrakk>\<^sub>e = map_option (\<lambda>bv. VNum (length bv)) (env_lookup_packet \<E> x p)" |
+  "\<lbrakk>Slice sl n m in \<E>\<rbrakk>\<^sub>e = Option.bind (env_lookup_sliceable \<E> sl)
     (\<lambda>bv. if 0 \<le> n \<and> n < m \<and> m \<le> length bv + 1 then Some (VBv (slice bv n m)) else None)"
   subgoal by (simp add: eqvt_def exp_sem_graph_aux_def)
   subgoal by (erule exp_sem_graph.induct) (auto)
   apply clarify
-  subgoal for P x e
-    by (rule exp.strong_exhaust[of x P]) (auto)
+  subgoal for P e \<E>
+    by (rule exp.strong_exhaust[of e P]) (auto)
   apply (simp_all)
 done
 nominal_termination (eqvt)
@@ -198,21 +199,21 @@ text\<open>Unlike for the small-step semantics, semantic expression equality and
 defined to be False when the semantics of either operand are undefined. (See section 3.3, p. 9)\<close>
 nominal_function formula_sem :: "formula \<Rightarrow> env \<Rightarrow> bool option" ("\<lbrakk>_ in _\<rbrakk>\<^sub>f" [50,60] 50)
 where
-  "\<lbrakk>FTrue in \<epsilon>\<rbrakk>\<^sub>f = Some True" |
-  "\<lbrakk>FFalse in \<epsilon>\<rbrakk>\<^sub>f = Some False" |
-  "\<lbrakk>Eq e\<^sub>1 e\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>f = (case (\<lbrakk>e\<^sub>1 in \<epsilon>\<rbrakk>\<^sub>e, \<lbrakk>e\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>e) of
+  "\<lbrakk>FTrue in \<E>\<rbrakk>\<^sub>f = Some True" |
+  "\<lbrakk>FFalse in \<E>\<rbrakk>\<^sub>f = Some False" |
+  "\<lbrakk>Eq e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>f = (case (\<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e, \<lbrakk>e\<^sub>2 in \<E>\<rbrakk>\<^sub>e) of
     (Some v\<^sub>1, Some v\<^sub>2) \<Rightarrow> Some (v\<^sub>1 = v\<^sub>2) | _ \<Rightarrow> Some False)" |
-  "\<lbrakk>Gt e\<^sub>1 e\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>f = (case (\<lbrakk>e\<^sub>1 in \<epsilon>\<rbrakk>\<^sub>e, \<lbrakk>e\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>e) of
+  "\<lbrakk>Gt e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>f = (case (\<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e, \<lbrakk>e\<^sub>2 in \<E>\<rbrakk>\<^sub>e) of
     (Some (VNum n\<^sub>1), Some (VNum n\<^sub>2)) \<Rightarrow> Some (n\<^sub>1 > n\<^sub>2) | _ \<Rightarrow> Some False)" |
-  "\<lbrakk>And f\<^sub>1 f\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>f = (case \<lbrakk>f\<^sub>1 in \<epsilon>\<rbrakk>\<^sub>f of None \<Rightarrow> None | Some False \<Rightarrow> Some False |
-    Some True \<Rightarrow> \<lbrakk>f\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>f)" |
-  "\<lbrakk>Not f\<^sub>1 in \<epsilon>\<rbrakk>\<^sub>f = map_option (\<lambda>b. \<not>b) (\<lbrakk>f\<^sub>1 in \<epsilon>\<rbrakk>\<^sub>f)" |
-  "\<lbrakk>IsValid x i in \<epsilon>\<rbrakk>\<^sub>f = map_option (\<lambda>bv. True) (env_lookup_instance \<epsilon> x i)"
+  "\<lbrakk>And f\<^sub>1 f\<^sub>2 in \<E>\<rbrakk>\<^sub>f = (case \<lbrakk>f\<^sub>1 in \<E>\<rbrakk>\<^sub>f of None \<Rightarrow> None | Some False \<Rightarrow> Some False |
+    Some True \<Rightarrow> \<lbrakk>f\<^sub>2 in \<E>\<rbrakk>\<^sub>f)" |
+  "\<lbrakk>Not f\<^sub>1 in \<E>\<rbrakk>\<^sub>f = map_option (\<lambda>b. \<not>b) (\<lbrakk>f\<^sub>1 in \<E>\<rbrakk>\<^sub>f)" |
+  "\<lbrakk>IsValid x \<iota> in \<E>\<rbrakk>\<^sub>f = map_option (\<lambda>bv. True) (env_lookup_instance \<E> x \<iota>)"
   subgoal by (simp add: eqvt_def formula_sem_graph_aux_def)
   subgoal by (erule formula_sem_graph.induct) (auto)
   apply clarify
-  subgoal for P x e
-    by (rule formula.strong_exhaust[of x P]) (auto)
+  subgoal for P \<phi> \<E>
+    by (rule formula.strong_exhaust[of \<phi> P]) (auto)
   apply (simp_all)
 done
 nominal_termination (eqvt)
@@ -233,17 +234,17 @@ where
   C_IfTrue:   "HT \<turnstile> (In, Out, H, If FTrue c\<^sub>1 c\<^sub>2) \<rightarrow> (In, Out, H, c\<^sub>1)" |
   C_IfFalse:  "HT \<turnstile> (In, Out, H, If FFalse c\<^sub>1 c\<^sub>2) \<rightarrow> (In, Out, H, c\<^sub>2)" |
   C_Assign1:  "\<lbrakk> (In, Out, H, e) \<rightarrow>\<^sub>e e' \<rbrakk>
-              \<Longrightarrow> HT \<turnstile> (In, Out, H, Assign i f e) \<rightarrow> (In, Out, H, Assign i f e')" |
-  C_Assign:   "\<lbrakk> header_lookup H i = Some inst; map_of HT i = Some \<eta>;
-                 header_field_to_range \<eta> f = (n, m); splice inst n m bv = bv';
-                 H' = header_update H i bv' \<rbrakk>
-              \<Longrightarrow> HT \<turnstile> (In, Out, H, Assign i f (Bv bv)) \<rightarrow> (In, Out, H', Skip)" |
-  C_Extract:  "\<lbrakk> map_of HT i = Some \<eta>; deserialize_header \<eta> In = (In', bv); H' = header_update H i bv \<rbrakk>
-              \<Longrightarrow> HT \<turnstile> (In, Out, H, Extract i) \<rightarrow> (In', Out, H', Skip)" |
-  C_Remit:    "\<lbrakk> map_of HT i = Some \<eta>; serialize_header H i = Some bv \<rbrakk>
-              \<Longrightarrow> HT \<turnstile> (In, Out, H, Remit i) \<rightarrow> (In, Out @ bv, H, Skip)" |
-  C_Add:      "\<lbrakk> map_of HT i = Some \<eta>; header_lookup H i = None; init_header \<eta> = bv; H' = header_update H i bv \<rbrakk>
-              \<Longrightarrow> HT \<turnstile> (In, Out, H, Add i) \<rightarrow> (In, Out, H', Skip)" |
+              \<Longrightarrow> HT \<turnstile> (In, Out, H, Assign \<iota> f e) \<rightarrow> (In, Out, H, Assign \<iota> f e')" |
+  C_Assign:   "\<lbrakk> H \<iota> = Some orig_bv; map_of HT \<iota> = Some \<eta>;
+                 header_field_to_range \<eta> f = (n, m); splice orig_bv n m bv = bv';
+                 H' = header_update H \<iota> bv' \<rbrakk>
+              \<Longrightarrow> HT \<turnstile> (In, Out, H, Assign \<iota> f (Bv bv)) \<rightarrow> (In, Out, H', Skip)" |
+  C_Extract:  "\<lbrakk> map_of HT \<iota> = Some \<eta>; deserialize_header \<eta> In = (In', bv); H' = header_update H \<iota> bv \<rbrakk>
+              \<Longrightarrow> HT \<turnstile> (In, Out, H, Extract \<iota>) \<rightarrow> (In', Out, H', Skip)" |
+  C_Remit:    "\<lbrakk> map_of HT \<iota> = Some \<eta>; serialize_header H \<iota> = Some bv \<rbrakk>
+              \<Longrightarrow> HT \<turnstile> (In, Out, H, Remit \<iota>) \<rightarrow> (In, Out @ bv, H, Skip)" |
+  C_Add:      "\<lbrakk> map_of HT \<iota> = Some \<eta>; H \<iota> = None; init_header \<eta> = bv; H' = header_update H \<iota> bv \<rbrakk>
+              \<Longrightarrow> HT \<turnstile> (In, Out, H, Add \<iota>) \<rightarrow> (In, Out, H', Skip)" |
   C_Reset:    "\<lbrakk> In' = Out @ In \<rbrakk>
               \<Longrightarrow> HT \<turnstile> (In, Out, H, Reset) \<rightarrow> (In', [], empty_headers, Skip)" |
   C_Ascribe:  "HT \<turnstile> (In, Out, H, Ascribe c ty) \<rightarrow> (In, Out, H, c)"
@@ -261,36 +262,36 @@ section\<open>Types\<close>
 
 nominal_function heap_ty_sem :: "heap_ty \<Rightarrow> env \<Rightarrow> heap set" ("\<lbrakk>_ in _\<rbrakk>\<^sub>t" [50,60] 100)
 where
-  "\<lbrakk>Nothing in \<epsilon>\<rbrakk>\<^sub>t = {}" |
-  "\<lbrakk>Top in \<epsilon>\<rbrakk>\<^sub>t = UNIV" |
-  "atom x \<sharp> (\<tau>\<^sub>1, \<epsilon>)
-   \<Longrightarrow>\<lbrakk>Sigma x \<tau>\<^sub>1 \<tau>\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>t = {h\<^sub>1 ++ h\<^sub>2 | h\<^sub>1 h\<^sub>2. h\<^sub>1 \<in> \<lbrakk>\<tau>\<^sub>1 in \<epsilon>\<rbrakk>\<^sub>t \<and> h\<^sub>2 \<in> \<lbrakk>\<tau>\<^sub>2 in \<epsilon>[x \<rightarrow> h\<^sub>1]\<rbrakk>\<^sub>t}" |
-  "\<lbrakk>Choice \<tau>\<^sub>1 \<tau>\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>t = \<lbrakk>\<tau>\<^sub>1 in \<epsilon>\<rbrakk>\<^sub>t \<union> \<lbrakk>\<tau>\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>t" |
-  "atom x \<sharp> (\<tau>, \<epsilon>)
-   \<Longrightarrow> \<lbrakk>Refinement x \<tau> \<phi> in \<epsilon>\<rbrakk>\<^sub>t = {h. h \<in> \<lbrakk>\<tau> in \<epsilon>\<rbrakk>\<^sub>t \<and> \<lbrakk>\<phi> in \<epsilon>[x \<rightarrow> h]\<rbrakk>\<^sub>f = Some True}" |
-  "atom x \<sharp> (\<tau>\<^sub>2, \<epsilon>)
-   \<Longrightarrow> \<lbrakk>Substitution \<tau>\<^sub>1 x \<tau>\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>t = {h. \<exists> h\<^sub>2. (h\<^sub>2 \<in> \<lbrakk>\<tau>\<^sub>2 in \<epsilon>\<rbrakk>\<^sub>t) \<and> (h \<in> \<lbrakk>\<tau>\<^sub>1 in \<epsilon>[x \<rightarrow> h\<^sub>2]\<rbrakk>\<^sub>t)}"
+  "\<lbrakk>Nothing in \<E>\<rbrakk>\<^sub>t = {}" |
+  "\<lbrakk>Top in \<E>\<rbrakk>\<^sub>t = UNIV" |
+  "atom x \<sharp> (\<tau>\<^sub>1, \<E>)
+   \<Longrightarrow>\<lbrakk>Sigma x \<tau>\<^sub>1 \<tau>\<^sub>2 in \<E>\<rbrakk>\<^sub>t = {h\<^sub>1 ++ h\<^sub>2 | h\<^sub>1 h\<^sub>2. h\<^sub>1 \<in> \<lbrakk>\<tau>\<^sub>1 in \<E>\<rbrakk>\<^sub>t \<and> h\<^sub>2 \<in> \<lbrakk>\<tau>\<^sub>2 in \<E>[x \<rightarrow> h\<^sub>1]\<rbrakk>\<^sub>t}" |
+  "\<lbrakk>Choice \<tau>\<^sub>1 \<tau>\<^sub>2 in \<E>\<rbrakk>\<^sub>t = \<lbrakk>\<tau>\<^sub>1 in \<E>\<rbrakk>\<^sub>t \<union> \<lbrakk>\<tau>\<^sub>2 in \<E>\<rbrakk>\<^sub>t" |
+  "atom x \<sharp> (\<tau>, \<E>)
+   \<Longrightarrow> \<lbrakk>Refinement x \<tau> \<phi> in \<E>\<rbrakk>\<^sub>t = {h. h \<in> \<lbrakk>\<tau> in \<E>\<rbrakk>\<^sub>t \<and> \<lbrakk>\<phi> in \<E>[x \<rightarrow> h]\<rbrakk>\<^sub>f = Some True}" |
+  "atom x \<sharp> (\<tau>\<^sub>2, \<E>)
+   \<Longrightarrow> \<lbrakk>Substitution \<tau>\<^sub>1 x \<tau>\<^sub>2 in \<E>\<rbrakk>\<^sub>t = {h. \<exists> h\<^sub>2. (h\<^sub>2 \<in> \<lbrakk>\<tau>\<^sub>2 in \<E>\<rbrakk>\<^sub>t) \<and> (h \<in> \<lbrakk>\<tau>\<^sub>1 in \<E>[x \<rightarrow> h\<^sub>2]\<rbrakk>\<^sub>t)}"
   using [[simproc del: alpha_lst]]
   subgoal by (auto simp add: eqvt_def heap_ty_sem_graph_aux_def)
   subgoal by (erule heap_ty_sem_graph.induct) (auto)
   apply clarify
-  subgoal for P \<tau> \<epsilon>
-    apply (rule heap_ty.strong_exhaust[of \<tau> P "(\<tau>, \<epsilon>)"])
+  subgoal for P \<tau> \<E>
+    apply (rule heap_ty.strong_exhaust[of \<tau> P "(\<tau>, \<E>)"])
     apply (auto simp add: fresh_star_def fresh_Pair)
     done
   apply (simp_all add: fresh_star_def fresh_at_base)
-  subgoal for x \<tau>\<^sub>1 \<epsilon> \<tau>\<^sub>2 x' \<tau>\<^sub>2'
-    apply (erule Abs_lst1_fcb2'[where c = "(\<tau>\<^sub>1, \<epsilon>)"])
+  subgoal for x \<tau>\<^sub>1 \<E> \<tau>\<^sub>2 x' \<tau>\<^sub>2'
+    apply (erule Abs_lst1_fcb2'[where c = "(\<tau>\<^sub>1, \<E>)"])
     apply (simp_all add: eqvt_at_def fresh_star_Pair)
     apply (simp_all add: perm_supp_eq fresh_Pair pure_fresh fresh_star_insert)
   done
-  subgoal for x \<tau> \<epsilon> \<phi> x' \<phi>'
-    apply (erule Abs_lst1_fcb2'[where c = "(\<tau>, \<epsilon>)"])
+  subgoal for x \<tau> \<E> \<phi> x' \<phi>'
+    apply (erule Abs_lst1_fcb2'[where c = "(\<tau>, \<E>)"])
     apply (simp_all add: eqvt_at_def fresh_star_Pair)
     apply (simp_all add: perm_supp_eq fresh_Pair pure_fresh fresh_star_insert)
   done
-  subgoal for x \<tau>\<^sub>2 \<epsilon> \<tau>\<^sub>1 x' \<tau>\<^sub>1'
-    apply (erule Abs_lst1_fcb2'[where c = "(\<tau>\<^sub>2, \<epsilon>)"])
+  subgoal for x \<tau>\<^sub>2 \<E> \<tau>\<^sub>1 x' \<tau>\<^sub>1'
+    apply (erule Abs_lst1_fcb2'[where c = "(\<tau>\<^sub>2, \<E>)"])
     apply (simp_all add: eqvt_at_def fresh_star_Pair)
     apply (simp_all add: perm_supp_eq fresh_Pair pure_fresh fresh_star_insert)
   done
@@ -300,35 +301,33 @@ nominal_termination (eqvt)
 
 inductive heap_entails_ty :: "heap \<Rightarrow> env \<Rightarrow> heap_ty \<Rightarrow> bool" ("_ \<Turnstile>_ _" [50,50,50] 500)
 where
-  Ent_Top:      "h \<Turnstile>\<epsilon> Top" |
-  Ent_ChoiceL:  "\<lbrakk> h \<Turnstile>\<epsilon> \<tau>\<^sub>1 \<rbrakk>
-                \<Longrightarrow> h \<Turnstile>\<epsilon> (Choice \<tau>\<^sub>1 \<tau>\<^sub>2)" |
-  Ent_ChoiceR:  "\<lbrakk> h \<Turnstile>\<epsilon> \<tau>\<^sub>2 \<rbrakk>
-                \<Longrightarrow> h \<Turnstile>\<epsilon> (Choice \<tau>\<^sub>1 \<tau>\<^sub>2)" |
-  Ent_Refine:   "\<lbrakk> h \<Turnstile>\<epsilon> \<tau>; \<lbrakk>\<phi> in \<epsilon>[x \<rightarrow> h]\<rbrakk>\<^sub>f = Some True \<rbrakk>
-                \<Longrightarrow> h \<Turnstile>\<epsilon> (Refinement x \<tau> \<phi>)" |
-  Ent_Sigma:    "\<lbrakk> In = In\<^sub>1 @ In\<^sub>2; Out = Out\<^sub>1 @ Out\<^sub>2; H = join_headers H\<^sub>1 H\<^sub>2;
-                   (Heap In\<^sub>1 Out\<^sub>1 H\<^sub>1) \<Turnstile>\<epsilon> \<tau>\<^sub>1; (Heap In\<^sub>2 Out\<^sub>2 H\<^sub>2) \<Turnstile>(\<epsilon>[x \<rightarrow> (Heap In\<^sub>1 Out\<^sub>1 H\<^sub>1)]) \<tau>\<^sub>2\<rbrakk>
-                \<Longrightarrow> (Heap In Out H) \<Turnstile>\<epsilon> (Sigma x \<tau>\<^sub>1 \<tau>\<^sub>2)" |
-  Ent_Subst:    "\<lbrakk> (Heap In\<^sub>2 Out\<^sub>2 H\<^sub>2) \<Turnstile>\<epsilon> \<tau>\<^sub>2; h \<Turnstile>(\<epsilon>[x \<rightarrow> (Heap In\<^sub>2 Out\<^sub>2 H\<^sub>2)]) \<tau>\<^sub>1 \<rbrakk>
-                \<Longrightarrow> h \<Turnstile>\<epsilon> (Substitution \<tau>\<^sub>1 x \<tau>\<^sub>2)"
+  Ent_Top:      "h \<Turnstile>\<E> Top" |
+  Ent_ChoiceL:  "\<lbrakk> h \<Turnstile>\<E> \<tau>\<^sub>1 \<rbrakk>
+                \<Longrightarrow> h \<Turnstile>\<E> (Choice \<tau>\<^sub>1 \<tau>\<^sub>2)" |
+  Ent_ChoiceR:  "\<lbrakk> h \<Turnstile>\<E> \<tau>\<^sub>2 \<rbrakk>
+                \<Longrightarrow> h \<Turnstile>\<E> (Choice \<tau>\<^sub>1 \<tau>\<^sub>2)" |
+  Ent_Refine:   "\<lbrakk> h \<Turnstile>\<E> \<tau>; \<lbrakk>\<phi> in \<E>[x \<rightarrow> h]\<rbrakk>\<^sub>f = Some True \<rbrakk>
+                \<Longrightarrow> h \<Turnstile>\<E> (Refinement x \<tau> \<phi>)" |
+  Ent_Sigma:    "\<lbrakk> h = h\<^sub>1 ++ h\<^sub>2;
+                   h\<^sub>1 \<Turnstile>\<E> \<tau>\<^sub>1; h\<^sub>2 \<Turnstile>(\<E>[x \<rightarrow> h\<^sub>1]) \<tau>\<^sub>2\<rbrakk>
+                \<Longrightarrow> h \<Turnstile>\<E> (Sigma x \<tau>\<^sub>1 \<tau>\<^sub>2)" |
+  Ent_Subst:    "\<lbrakk> h\<^sub>2 \<Turnstile>\<E> \<tau>\<^sub>2; h \<Turnstile>(\<E>[x \<rightarrow> h\<^sub>2]) \<tau>\<^sub>1 \<rbrakk>
+                \<Longrightarrow> h \<Turnstile>\<E> (Substitution \<tau>\<^sub>1 x \<tau>\<^sub>2)"
 
 definition env_entails_ty_env :: "env \<Rightarrow> ty_env \<Rightarrow> bool" ("_ \<TTurnstile> _" [50,50] 500)
 where
-  "(\<epsilon> \<TTurnstile> \<Gamma>) = (\<forall>x. x \<in> (fst ` set \<Gamma>)
-    \<longrightarrow> (\<exists>h \<tau>. (map_of \<epsilon> x = Some h) \<and> (map_of \<Gamma> x = Some \<tau>) \<and> (h \<Turnstile>\<epsilon> \<tau>)))"
+  "(\<E> \<TTurnstile> \<Gamma>) = (\<forall>x. x \<in> (fst ` set \<Gamma>)
+    \<longrightarrow> (\<exists>h \<tau>. (map_of \<E> x = Some h) \<and> (map_of \<Gamma> x = Some \<tau>) \<and> (h \<Turnstile>\<E> \<tau>)))"
 
 definition ty_includes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<Rightarrow> bool" where
-  "ty_includes \<Gamma> \<tau> i = (\<forall>\<epsilon>. \<epsilon> \<TTurnstile> \<Gamma> \<longrightarrow> (\<forall>h \<in> \<lbrakk>\<tau> in \<epsilon>\<rbrakk>\<^sub>t. i \<in> heap_dom h))"
+  "ty_includes \<Gamma> \<tau> \<iota> = (\<forall>\<E>. \<E> \<TTurnstile> \<Gamma> \<longrightarrow> (\<forall>h \<in> \<lbrakk>\<tau> in \<E>\<rbrakk>\<^sub>t. \<iota> \<in> heap_dom h))"
 
 definition ty_excludes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<Rightarrow> bool" where
-  "ty_excludes \<Gamma> \<tau> i = (\<forall>\<epsilon>. \<epsilon> \<TTurnstile> \<Gamma> \<longrightarrow> (\<forall>h \<in> \<lbrakk>\<tau> in \<epsilon>\<rbrakk>\<^sub>t. i \<notin> heap_dom h))"
+  "ty_excludes \<Gamma> \<tau> \<iota> = (\<forall>\<E>. \<E> \<TTurnstile> \<Gamma> \<longrightarrow> (\<forall>h \<in> \<lbrakk>\<tau> in \<E>\<rbrakk>\<^sub>t. \<iota> \<notin> heap_dom h))"
 
 
 (* TODO: Make a definition for the \<epsilon> heap here, use it to finish TC_Remit. *)
-(* TODO: Consider replacing all uses of \<epsilon> as environment with \<E>? *)
 
-(* TODO: I can't get the prios for this and ty_env_add_heap (";") such that this is not ambigious *)
 inductive exp_typing :: "ty_env \<Rightarrow> exp \<Rightarrow> base_ty \<Rightarrow> bool"
   ("_ \<turnstile>\<^sub>e _ : _" [51,60,60] 60)
 where
@@ -346,8 +345,8 @@ where
            maybe. For instances this could/should also include m \<le> size if we make HT an input.*)
   TE_SlicePkt:  "\<lbrakk> map_of \<Gamma> x = Some _; 0 \<le> n \<and> n < m \<rbrakk>
                 \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>e (Slice (SlPacket x p) n m) : BV" |
-  TE_SliceInst: "\<lbrakk> map_of \<Gamma> x = Some \<tau>; ty_includes \<Gamma> \<tau> i; 0 \<le> n \<and> n < m \<rbrakk>
-                \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>e (Slice (SlInstance x i) n m) : BV"
+  TE_SliceInst: "\<lbrakk> map_of \<Gamma> x = Some \<tau>; ty_includes \<Gamma> \<tau> \<iota>; 0 \<le> n \<and> n < m \<rbrakk>
+                \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>e (Slice (SlInstance x \<iota>) n m) : BV"
 
 inductive formula_typing :: "ty_env \<Rightarrow> formula \<Rightarrow> base_ty \<Rightarrow> bool"
   ("_ \<turnstile>\<^sub>f _ : _" [50,50,50] 60)
@@ -365,42 +364,42 @@ where
   TF_Not:       "\<lbrakk> \<Gamma> \<turnstile>\<^sub>f \<phi> : Bool \<rbrakk>
                 \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>f (Not \<phi>) : Bool" |
   TF_IsValid:   "\<lbrakk> map_of \<Gamma> x = Some _ \<rbrakk>
-                \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>f (IsValid x i) : Bool"
+                \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>f (IsValid x \<iota>) : Bool"
 
 inductive command_typing :: "header_table \<Rightarrow> ty_env \<Rightarrow> cmd \<Rightarrow> pi_ty \<Rightarrow> bool"
   ("_, _ \<turnstile> _ : _" [50,50,50,50] 60)
 where
   TC_Skip:      "\<lbrakk> \<tau>\<^sub>2 = Refinement y \<tau>\<^sub>1 (mk_heap_eq HT y x)  \<rbrakk>
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> Skip : ((x : \<tau>\<^sub>1) \<rightarrow> \<tau>\<^sub>2)" |
-  TC_Seq:       "\<lbrakk> HT, \<Gamma> \<turnstile> c\<^sub>1 : ((x : \<tau>\<^sub>1) \<rightarrow> \<tau>12); HT, (\<Gamma>, x : \<tau>\<^sub>1) \<turnstile> c\<^sub>2 : ((y : \<tau>12) \<rightarrow> \<tau>22) \<rbrakk>
-                \<Longrightarrow> HT, \<Gamma> \<turnstile> Seq c\<^sub>1 c\<^sub>2 : ((x : \<tau>\<^sub>1) \<rightarrow> (Substitution \<tau>22 y \<tau>12))" |
-  TC_If:        "\<lbrakk> (\<Gamma>; \<tau>\<^sub>1) \<turnstile>\<^sub>f \<phi> : Bool;
-                   HT, \<Gamma> \<turnstile> c\<^sub>1 : ((x : Refinement y \<tau>\<^sub>1 \<phi>[y/var_heap]\<^sub>f) \<rightarrow> \<tau>12);
-                   HT, \<Gamma> \<turnstile> c\<^sub>2 : ((x : Refinement y \<tau>\<^sub>1 (Not \<phi>[y/var_heap]\<^sub>f)) \<rightarrow> \<tau>22) \<rbrakk>
+  TC_Seq:       "\<lbrakk> HT, \<Gamma> \<turnstile> c\<^sub>1 : ((x : \<tau>\<^sub>1) \<rightarrow> \<tau>12); HT, (\<Gamma>\<^bold>, x : \<tau>\<^sub>1) \<turnstile> c\<^sub>2 : ((y : \<tau>\<^sub>1\<^sub>2) \<rightarrow> \<tau>\<^sub>2\<^sub>2) \<rbrakk>
+                \<Longrightarrow> HT, \<Gamma> \<turnstile> Seq c\<^sub>1 c\<^sub>2 : ((x : \<tau>\<^sub>1) \<rightarrow> (Substitution \<tau>\<^sub>2\<^sub>2 y \<tau>\<^sub>1\<^sub>2))" |
+  TC_If:        "\<lbrakk> (\<Gamma>\<^bold>; \<tau>\<^sub>1) \<turnstile>\<^sub>f \<phi> : Bool;
+                   HT, \<Gamma> \<turnstile> c\<^sub>1 : ((x : Refinement y \<tau>\<^sub>1 \<phi>[y/var_heap]\<^sub>f) \<rightarrow> \<tau>\<^sub>1\<^sub>2);
+                   HT, \<Gamma> \<turnstile> c\<^sub>2 : ((x : Refinement y \<tau>\<^sub>1 (Not \<phi>[y/var_heap]\<^sub>f)) \<rightarrow> \<tau>\<^sub>2\<^sub>2) \<rbrakk>
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> (If \<phi> c\<^sub>1 c\<^sub>2) : ((x : \<tau>\<^sub>1) \<rightarrow>
-                  Choice (Refinement y \<tau>12 \<phi>[x/var_heap]\<^sub>f) (Refinement y \<tau>22 (Not \<phi>[x/heap]\<^sub>f)))" |
+                  Choice (Refinement y \<tau>\<^sub>1\<^sub>2 \<phi>[x/var_heap]\<^sub>f) (Refinement y \<tau>\<^sub>2\<^sub>2 (Not \<phi>[x/heap]\<^sub>f)))" |
                 (* Ignoring the F(i,f) = BV premise here. The paper never mentions it, the thesis
                    seems to say it would be useful for potentially more fine-grained checking as
                    an extension, but it's not actually used yet. *)
-  TC_Assign:    "\<lbrakk> ty_includes \<Gamma> \<tau>\<^sub>1 i;
-                   (\<Gamma>; \<tau>\<^sub>1) \<turnstile>\<^sub>e e : BV;
-                   \<phi>pkt = And (Eq (Packet y PktIn) (Packet x PktIn))
+  TC_Assign:    "\<lbrakk> ty_includes \<Gamma> \<tau>\<^sub>1 \<iota>;
+                   (\<Gamma>\<^bold>; \<tau>\<^sub>1) \<turnstile>\<^sub>e e : BV;
+                   \<phi>\<^sub>p\<^sub>k\<^sub>t = And (Eq (Packet y PktIn) (Packet x PktIn))
                               (Eq (Packet y PktOut) (Packet x PktOut));
-                   \<phi>i = mk_heap_eq_instances_except HT i y x;
-                   map_of HT i = Some ht;
-                   header_field_to_range ht f = (n, m);
-                   \<phi>f = mk_fields_eq_except ht f i y x;
-                   \<phi>feq = Eq (Slice (SlInstance y i) n m) e[x/heap]\<^sub>e \<rbrakk>
-                \<Longrightarrow> HT, \<Gamma> \<turnstile> (Assign i f e) : ((x : \<tau>\<^sub>1) \<rightarrow> Refinement y Top
-                      (And \<phi>pkt (And \<phi>i (And \<phi>f \<phi>feq))))" |
+                   \<phi>\<^sub>\<iota> = mk_heap_eq_instances_except HT \<iota> y x;
+                   map_of HT \<iota> = Some \<eta>;
+                   header_field_to_range \<eta> f = (n, m);
+                   \<phi>\<^sub>f = mk_fields_eq_except \<eta> f \<iota> y x;
+                   \<phi>\<^sub>f\<^sub>e\<^sub>q = Eq (Slice (SlInstance y \<iota>) n m) e[x/heap]\<^sub>e \<rbrakk>
+                \<Longrightarrow> HT, \<Gamma> \<turnstile> (Assign \<iota> f e) : ((x : \<tau>\<^sub>1) \<rightarrow> Refinement y Top
+                      (And \<phi>\<^sub>p\<^sub>k\<^sub>t (And \<phi>\<^sub>\<iota> (And \<phi>\<^sub>f \<phi>\<^sub>f\<^sub>e\<^sub>q))))" |
   (* TODO: Skipping Extract for now, want to do chomp last. *)
   (* TODO: Introduce a helper function for slicing an entire instance and use it here and in the equality helpers above *)
-  TC_Remit:     "\<lbrakk> ty_includes \<Gamma> \<tau>\<^sub>1 i;
-                   map_of HT i = Some ht;
-                   header_length ht = n;
+  TC_Remit:     "\<lbrakk> ty_includes \<Gamma> \<tau>\<^sub>1 \<iota>;
+                   map_of HT \<iota> = Some \<eta>;
+                   header_length \<eta> = n;
                    \<phi> = And (Eq (Packet z PktIn) (Bv []))
-                           (Eq (Packet z PktOut) (Slice (SlInstance x i) 0 n))\<rbrakk>
-                 \<Longrightarrow> HT, \<Gamma> \<turnstile> Remit i : ((x : \<tau>\<^sub>1) \<rightarrow> Sigma y (Refinement z \<tau>\<^sub>1 (mk_heap_eq HT z x))
+                           (Eq (Packet z PktOut) (Slice (SlInstance x \<iota>) 0 n))\<rbrakk>
+                 \<Longrightarrow> HT, \<Gamma> \<turnstile> Remit \<iota> : ((x : \<tau>\<^sub>1) \<rightarrow> Sigma y (Refinement z \<tau>\<^sub>1 (mk_heap_eq HT z x))
                                                            (Refinement z Top \<phi>))"
 
 end

@@ -1,13 +1,12 @@
 theory Utils imports Syntax begin
 
-(* TODO: Probably just make a lot of these definitions instead of (nominal_) funs. *)
-
-fun slice :: "'a list \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> 'a list" where
+definition slice :: "'a list \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> 'a list" where
   "slice xs n m = take (m - n) (drop n xs)"
 
 text\<open>Replaces [n:m) in the first input list with the second list.\<close>
-fun splice :: "'a list \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> 'a list \<Rightarrow> 'a list" where
+definition splice :: "'a list \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> 'a list \<Rightarrow> 'a list" where
   "splice xs n m ins = (slice xs 0 n) @ ins @ (slice xs m (length xs))"
+
 
 section\<open>Nominal2 Lemmas\<close>
 
@@ -21,6 +20,7 @@ lemma concat_eqvt[eqvt]: "p \<bullet> (concat xss) = concat (p \<bullet> xss)"
   by (induction xss) (auto simp add: append_eqvt)
 
 lemma fresh_star_empty[simp]: "{} \<sharp>* x" by (simp add: fresh_star_def)
+
 
 section\<open>Headers\<close>
 
@@ -60,6 +60,7 @@ definition deserialize_header :: "header_type \<Rightarrow> bv \<Rightarrow> (bv
 definition join_headers :: "headers \<Rightarrow> headers \<Rightarrow> headers" where
   "join_headers H\<^sub>1 H\<^sub>2 = (Map.map_add H\<^sub>1 H\<^sub>2)"
 
+
 section\<open>Heaps\<close>
 
 definition heap_dom :: "heap \<Rightarrow> instanc set" where
@@ -92,9 +93,15 @@ section\<open>Environments\<close>
 
 definition env_lookup_packet :: "env \<Rightarrow> var \<Rightarrow> packet \<Rightarrow> bv option" where
   "env_lookup_packet \<E> x p = map_option (\<lambda>h. heap_lookup_packet h p) (map_of \<E> x)"
+lemma env_lookup_packet_eqvt[eqvt]:
+  "p \<bullet> env_lookup_packet \<E> x pkt = env_lookup_packet (p \<bullet> \<E>) (p \<bullet> x) (p \<bullet> pkt)"
+  by (simp add: env_lookup_packet_def permute_packet_def)
 
 definition env_lookup_instance :: "env \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> bv option" where
   "env_lookup_instance \<E> x \<iota> = Option.bind (map_of \<E> x) (\<lambda>h. heap_lookup_instance h \<iota>)"
+lemma env_lookup_instance_eqvt[eqvt]:
+  "p \<bullet> env_lookup_instance \<E> x \<iota> = env_lookup_instance (p \<bullet> \<E>) (p \<bullet> x) (p \<bullet> \<iota>)"
+  by (simp add: env_lookup_instance_def) (simp add: permute_pure)
 
 nominal_function env_lookup_sliceable :: "env \<Rightarrow> sliceable \<Rightarrow> bv option" where
   "env_lookup_sliceable \<E> (SlPacket x p) = env_lookup_packet \<E> x p" |

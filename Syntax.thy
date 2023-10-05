@@ -116,14 +116,14 @@ nominal_datatype base_ty = Nat | Bool | BV | Pi pi_ty
 type_synonym ty_env = "(var \<times> heap_ty) list"
 
 definition ty_env_update :: "ty_env \<Rightarrow> var \<Rightarrow> heap_ty \<Rightarrow> ty_env"
-  ("_, _ : _" [1000, 51, 51] 50)
+  ("_\<^bold>, _ : _" [1000, 51, 51] 50)
 where
-  "\<Gamma>, x : \<tau> = AList.update x \<tau> \<Gamma>"
+  "\<Gamma>\<^bold>, x : \<tau> = AList.update x \<tau> \<Gamma>"
 
 definition ty_env_add_heap :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> ty_env"
-  ("_; _" [50,51] 50)
+  ("_\<^bold>; _" [50,51] 50)
 where
-  "(\<Gamma>; \<tau>) = AList.update var_heap \<tau> \<Gamma>"
+  "(\<Gamma>\<^bold>; \<tau>) = AList.update var_heap \<tau> \<Gamma>"
 
 section\<open>Commands\<close>
 
