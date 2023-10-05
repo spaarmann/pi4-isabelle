@@ -318,6 +318,10 @@ where
   "(\<E> \<TTurnstile> \<Gamma>) = (\<forall>x. x \<in> (fst ` set \<Gamma>)
     \<longrightarrow> (\<exists>h \<tau>. (map_of \<E> x = Some h) \<and> (map_of \<Gamma> x = Some \<tau>) \<and> (h \<Turnstile>\<E> \<tau>)))"
 
+definition subtype_of :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> heap_ty \<Rightarrow> bool" ("_ \<turnstile> _ <: _" [50,50,50] 50)
+where
+  "\<Gamma> \<turnstile> \<tau>\<^sub>1 <: \<tau>\<^sub>2 \<equiv> \<forall>\<E>. \<E> \<TTurnstile> \<Gamma> \<longrightarrow> \<lbrakk>\<tau>\<^sub>1 in \<E>\<rbrakk>\<^sub>t \<subseteq> \<lbrakk>\<tau>\<^sub>2 in \<E>\<rbrakk>\<^sub>t"
+
 definition ty_includes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<Rightarrow> bool" where
   "ty_includes \<Gamma> \<tau> \<iota> = (\<forall>\<E>. \<E> \<TTurnstile> \<Gamma> \<longrightarrow> (\<forall>h \<in> \<lbrakk>\<tau> in \<E>\<rbrakk>\<^sub>t. \<iota> \<in> heap_dom h))"
 
@@ -421,7 +425,9 @@ where
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> Reset : ((x : \<tau>\<^sub>1) \<rightarrow> Sigma y (Refinement z (heap_ty_empty HT) \<phi>\<^sub>1)
                                                         (Refinement z (heap_ty_empty HT) \<phi>\<^sub>2))" |
   TC_Ascribe:   "\<lbrakk> HT, \<Gamma> \<turnstile> c : \<sigma> \<rbrakk>
-                \<Longrightarrow> HT, \<Gamma> \<turnstile> Ascribe c \<sigma> : \<sigma>"
-  (* TODO: T-Sub *)
+                \<Longrightarrow> HT, \<Gamma> \<turnstile> Ascribe c \<sigma> : \<sigma>" |
+  TC_Sub:       "\<lbrakk> \<Gamma> \<turnstile> \<tau>\<^sub>1 <: \<tau>\<^sub>3; (\<Gamma>\<^bold>, x : \<tau>\<^sub>1) \<turnstile> \<tau>\<^sub>4 <: \<tau>\<^sub>2;
+                   HT, \<Gamma> \<turnstile> c : ((x : \<tau>\<^sub>3) \<rightarrow> \<tau>\<^sub>4) \<rbrakk>
+                \<Longrightarrow> HT, \<Gamma> \<turnstile> c : ((x : \<tau>\<^sub>1) \<rightarrow> \<tau>\<^sub>2)"
 
 end
