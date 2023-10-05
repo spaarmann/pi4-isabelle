@@ -12,13 +12,18 @@ text\<open>Instances don't appear in binders, so we can just model these as stri
 type_synonym instanc = string
 type_synonym field_name = string
 
-text\<open>Bit vectors are essentially boolean lists.
-  The paper and implementation have an additional concept of bit variables, but I haven't seen a
-  a place where they're actually needed yet.\<close>
-type_synonym bv = "bool list"
+text\<open>Bit vectors are mostly boolean lists.
+ There is an additional option of including bit variables. This is used by the chomp operation.
+ Variables only appear internally, never in the surface syntax.\<close>
+datatype bit = Zero | One | BitVar nat
+type_synonym bv = "bit list"
+instantiation bit :: pure begin
+  definition permute_bit :: "perm \<Rightarrow> bit \<Rightarrow> bit" where
+    "permute_bit _ b = b"
+  instance by standard (auto simp add: permute_bit_def)
+end
 
 datatype packet = PktIn | PktOut
-
 instantiation packet :: pure begin
   definition permute_packet :: "perm \<Rightarrow> packet \<Rightarrow> packet" where
     "permute_packet _ pkt = pkt"
@@ -45,7 +50,7 @@ instantiation header_type_ext :: (type) pure begin
 end
 
 type_synonym headers = "instanc \<Rightarrow> bv option"
-
+                                   
 record heap = 
   heap_pkt_in :: bv
   heap_pkt_out :: bv

@@ -49,7 +49,7 @@ lemma header_length_eqvt[eqvt]: "p \<bullet> header_length ht = header_length (p
   by (auto simp add: permute_pure)
 
 definition init_header :: "header_type \<Rightarrow> bv" where
-  "init_header \<eta> = replicate (header_length \<eta>) False"
+  "init_header \<eta> = replicate (header_length \<eta>) Zero"
 
 definition serialize_header :: "headers \<Rightarrow> instanc \<Rightarrow> bv option" where
   "serialize_header H i = H i"
