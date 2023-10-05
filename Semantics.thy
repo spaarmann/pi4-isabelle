@@ -371,7 +371,7 @@ inductive command_typing :: "header_table \<Rightarrow> ty_env \<Rightarrow> cmd
 where
   TC_Skip:      "\<lbrakk> \<tau>\<^sub>2 = Refinement y \<tau>\<^sub>1 (mk_heap_eq HT y x)  \<rbrakk>
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> Skip : ((x : \<tau>\<^sub>1) \<rightarrow> \<tau>\<^sub>2)" |
-  TC_Seq:       "\<lbrakk> HT, \<Gamma> \<turnstile> c\<^sub>1 : ((x : \<tau>\<^sub>1) \<rightarrow> \<tau>12); HT, (\<Gamma>\<^bold>, x : \<tau>\<^sub>1) \<turnstile> c\<^sub>2 : ((y : \<tau>\<^sub>1\<^sub>2) \<rightarrow> \<tau>\<^sub>2\<^sub>2) \<rbrakk>
+  TC_Seq:       "\<lbrakk> HT, \<Gamma> \<turnstile> c\<^sub>1 : ((x : \<tau>\<^sub>1) \<rightarrow> \<tau>\<^sub>1\<^sub>2); HT, (\<Gamma>\<^bold>, x : \<tau>\<^sub>1) \<turnstile> c\<^sub>2 : ((y : \<tau>\<^sub>1\<^sub>2) \<rightarrow> \<tau>\<^sub>2\<^sub>2) \<rbrakk>
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> Seq c\<^sub>1 c\<^sub>2 : ((x : \<tau>\<^sub>1) \<rightarrow> (Substitution \<tau>\<^sub>2\<^sub>2 y \<tau>\<^sub>1\<^sub>2))" |
   TC_If:        "\<lbrakk> (\<Gamma>\<^bold>; \<tau>\<^sub>1) \<turnstile>\<^sub>f \<phi> : Bool;
                    HT, \<Gamma> \<turnstile> c\<^sub>1 : ((x : Refinement y \<tau>\<^sub>1 \<phi>[y/var_heap]\<^sub>f) \<rightarrow> \<tau>\<^sub>1\<^sub>2);
@@ -387,18 +387,16 @@ where
                               (Eq (Packet y PktOut) (Packet x PktOut));
                    \<phi>\<^sub>\<iota> = mk_heap_eq_instances_except HT \<iota> y x;
                    map_of HT \<iota> = Some \<eta>;
-                   header_field_to_range \<eta> f = (n, m);
-                   \<phi>\<^sub>f = mk_fields_eq_except \<eta> f \<iota> y x;
-                   \<phi>\<^sub>f\<^sub>e\<^sub>q = Eq (Slice (SlInstance y \<iota>) n m) e[x/heap]\<^sub>e \<rbrakk>
+                   \<phi>\<^sub>f = mk_fields_eq_except \<eta> \<iota> f y x;
+                   \<phi>\<^sub>f\<^sub>e\<^sub>q = Eq (mk_field_read \<eta> \<iota> f y) e[x/heap]\<^sub>e \<rbrakk>
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> (Assign \<iota> f e) : ((x : \<tau>\<^sub>1) \<rightarrow> Refinement y Top
                       (And \<phi>\<^sub>p\<^sub>k\<^sub>t (And \<phi>\<^sub>\<iota> (And \<phi>\<^sub>f \<phi>\<^sub>f\<^sub>e\<^sub>q))))" |
   (* TODO: Skipping Extract for now, want to do chomp last. *)
-  (* TODO: Introduce a helper function for slicing an entire instance and use it here and in the equality helpers above *)
+  (* TODO: Finish TC_Remit with \<epsilon> heap. *)
   TC_Remit:     "\<lbrakk> ty_includes \<Gamma> \<tau>\<^sub>1 \<iota>;
                    map_of HT \<iota> = Some \<eta>;
-                   header_length \<eta> = n;
                    \<phi> = And (Eq (Packet z PktIn) (Bv []))
-                           (Eq (Packet z PktOut) (Slice (SlInstance x \<iota>) 0 n))\<rbrakk>
+                           (Eq (Packet z PktOut) (mk_inst_read \<eta> \<iota> x))\<rbrakk>
                  \<Longrightarrow> HT, \<Gamma> \<turnstile> Remit \<iota> : ((x : \<tau>\<^sub>1) \<rightarrow> Sigma y (Refinement z \<tau>\<^sub>1 (mk_heap_eq HT z x))
                                                            (Refinement z Top \<phi>))"
 

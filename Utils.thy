@@ -120,6 +120,21 @@ nominal_termination (eqvt)
 lemma env_update_eqvt[eqvt]: "p \<bullet> \<E>[x \<rightarrow> h] = (p \<bullet> \<E>)[p \<bullet> x \<rightarrow> p \<bullet> h]"
   by (induct \<E>) (auto simp add: permute_pure env_update_def)
 
+
+section\<open>Helpers for creating expressions\<close>
+
+definition mk_inst_read :: "header_type \<Rightarrow> instanc \<Rightarrow> var \<Rightarrow> exp" where
+  "mk_inst_read \<eta> \<iota> x = (let hl = header_length \<eta> in Slice (SlInstance x \<iota>) 0 hl)"
+lemma mk_inst_read_eqvt[eqvt]:
+  "p \<bullet> mk_inst_read \<eta> \<iota> x = mk_inst_read (p \<bullet> \<eta>) (p \<bullet> \<iota>) (p \<bullet> x)"
+  by (simp add: mk_inst_read_def permute_pure)
+
+definition mk_field_read :: "header_type \<Rightarrow> instanc \<Rightarrow> field_name \<Rightarrow> var \<Rightarrow> exp" where
+  "mk_field_read \<eta> \<iota> f x = (let (n, m) = header_field_to_range \<eta> f in Slice (SlInstance x \<iota>) n m)"
+lemma mk_field_read_eqvt[eqvt]:
+  "p \<bullet> mk_field_read \<eta> \<iota> f x = mk_field_read (p \<bullet> \<eta>) (p \<bullet> \<iota>) (p \<bullet> f) (p \<bullet> x)"
+  by (simp add: mk_field_read_def permute_pure)
+
 section\<open>Helper for creating formulas\<close>
 
 text\<open>Creates a formula that is the AND of all given subformulas.\<close>
@@ -132,11 +147,10 @@ lemma mk_and_eqvt[eqvt]: "p \<bullet> mk_and \<phi>s = mk_and (p \<bullet> \<phi
 
 text\<open>Predicate for whether an entire instance is equal in the given two heaps.\<close>
 definition mk_instance_eq :: "header_type \<Rightarrow> instanc \<Rightarrow> var \<Rightarrow> var \<Rightarrow> formula" where
-  "mk_instance_eq \<eta> \<iota> x y = (let hl = header_length \<eta> in
-    Eq (Slice (SlInstance x \<iota>) 0 hl) (Slice (SlInstance y \<iota>) 0 hl))"
+  "mk_instance_eq \<eta> \<iota> x y = Eq (mk_inst_read \<eta> \<iota> x) (mk_inst_read \<eta> \<iota> y)"
 lemma mk_instance_eq_eqvt[eqvt]:
   "p \<bullet> mk_instance_eq \<eta> \<iota> x y = mk_instance_eq (p \<bullet> \<eta>) (p \<bullet> \<iota>) (p \<bullet> x) (p \<bullet> y)"
-  by (auto simp add: mk_instance_eq_def permute_pure Let_def)
+  by (simp add: mk_instance_eq_def permute_pure Let_def)
 
 text\<open>Instance equality:
 Predicate for whether two heaps are equivalent in terms of all possible instances.
@@ -167,8 +181,7 @@ lemma mk_heap_eq_instances_except_eqvt[eqvt]:
 
 definition mk_single_field_eq :: "header_type \<Rightarrow> instanc \<Rightarrow> field_name \<Rightarrow> var \<Rightarrow> var \<Rightarrow> formula"
 where
-  "mk_single_field_eq \<eta> f \<iota> x y = (let (n, m) = header_field_to_range \<eta> f in
-    Eq (Slice (SlInstance x \<iota>) n m) (Slice (SlInstance y \<iota>) n m))"
+  "mk_single_field_eq \<eta> \<iota> f x y = Eq (mk_field_read \<eta> \<iota> f x) (mk_field_read \<eta> \<iota> f y)"
 lemma mk_single_field_eq_eqvt[eqvt]:
   "p \<bullet> mk_single_field_eq \<eta> f \<iota> x y = mk_single_field_eq (p \<bullet> \<eta>) (p \<bullet> f) (p \<bullet> \<iota>) (p \<bullet> x) (p \<bullet> y)"
   by (simp add: mk_single_field_eq_def permute_pure)
@@ -176,7 +189,7 @@ lemma mk_single_field_eq_eqvt[eqvt]:
 definition mk_fields_eq_except :: "header_type \<Rightarrow> instanc \<Rightarrow> field_name \<Rightarrow> var \<Rightarrow> var \<Rightarrow> formula"
 where
   "mk_fields_eq_except \<eta> \<iota> g x y =
-    mk_and [mk_single_field_eq \<eta> (field_name f) \<iota> x y. f \<leftarrow> header_fields \<eta>, field_name f \<noteq> g]"
+    mk_and [mk_single_field_eq \<eta> \<iota> (field_name f) x y. f \<leftarrow> header_fields \<eta>, field_name f \<noteq> g]"
 lemma mk_fields_eq_except_eqvt[eqvt]:
   "p \<bullet> mk_fields_eq_except ht i g x y = mk_fields_eq_except (p \<bullet> ht) (p \<bullet> i) (p \<bullet> g) (p \<bullet> x) (p \<bullet> y)"
   by (simp add: mk_fields_eq_except_def permute_pure)
