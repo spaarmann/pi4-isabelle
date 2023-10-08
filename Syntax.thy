@@ -89,7 +89,7 @@ end
 
 definition env_update :: "env \<Rightarrow> var \<Rightarrow> heap \<Rightarrow> env" ("_[_ \<rightarrow> _]" [1000, 49, 49] 1000)
 where
-  "\<E>[x \<rightarrow> h] = AList.update x h \<E>"
+  "\<E>[x \<rightarrow> h] = \<E>\<lparr>heaps := AList.update x h (heaps \<E>)\<rparr>"
 
 section\<open>Expressions and Formulas\<close>
 

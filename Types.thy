@@ -59,7 +59,7 @@ where
 definition env_entails_ty_env :: "env \<Rightarrow> ty_env \<Rightarrow> bool" ("_ \<TTurnstile> _" [50,50] 500)
 where
   "(\<E> \<TTurnstile> \<Gamma>) = (\<forall>x. x \<in> (fst ` set \<Gamma>)
-    \<longrightarrow> (\<exists>h \<tau>. (map_of \<E> x = Some h) \<and> (map_of \<Gamma> x = Some \<tau>) \<and> (h \<Turnstile>\<E> \<tau>)))"
+    \<longrightarrow> (\<exists>h \<tau>. (map_of (heaps \<E>) x = Some h) \<and> (map_of \<Gamma> x = Some \<tau>) \<and> (h \<Turnstile>\<E> \<tau>)))"
 
 definition subtype_of :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> heap_ty \<Rightarrow> bool" ("_ \<turnstile> _ <: _" [50,50,50] 50)
 where

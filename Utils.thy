@@ -19,6 +19,9 @@ lemma map_of_eqvt[eqvt]: "p \<bullet> map_of xs x = map_of (p \<bullet> xs) (p \
 lemma concat_eqvt[eqvt]: "p \<bullet> (concat xss) = concat (p \<bullet> xss)"
   by (induction xss) (auto simp add: append_eqvt)
 
+lemma alist_update_eqvt[eqvt]: "p \<bullet> AList.update k v xs = AList.update (p \<bullet> k) (p \<bullet> v) (p \<bullet> xs)"
+  by (induction xs) (auto)
+
 lemma fresh_star_empty[simp]: "{} \<sharp>* x" by (simp add: fresh_star_def)
 
 
@@ -91,14 +94,17 @@ lemma concat_heaps_eqvt[eqvt]: "p \<bullet> concat_heaps h\<^sub>1 h\<^sub>2 = c
 
 section\<open>Environments\<close>
 
+lemma env_heaps_eqvt[eqvt]: "p \<bullet> heaps \<E> = heaps (p \<bullet> \<E>)"
+  by (simp add: permute_env_ext_def)
+
 definition env_lookup_packet :: "env \<Rightarrow> var \<Rightarrow> packet \<Rightarrow> bv option" where
-  "env_lookup_packet \<E> x p = map_option (\<lambda>h. heap_lookup_packet h p) (map_of \<E> x)"
+  "env_lookup_packet \<E> x p = map_option (\<lambda>h. heap_lookup_packet h p) (map_of (heaps \<E>) x)"
 lemma env_lookup_packet_eqvt[eqvt]:
   "p \<bullet> env_lookup_packet \<E> x pkt = env_lookup_packet (p \<bullet> \<E>) (p \<bullet> x) (p \<bullet> pkt)"
   by (simp add: env_lookup_packet_def permute_packet_def)
 
 definition env_lookup_instance :: "env \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> bv option" where
-  "env_lookup_instance \<E> x \<iota> = Option.bind (map_of \<E> x) (\<lambda>h. heap_lookup_instance h \<iota>)"
+  "env_lookup_instance \<E> x \<iota> = Option.bind (map_of (heaps \<E>) x) (\<lambda>h. heap_lookup_instance h \<iota>)"
 lemma env_lookup_instance_eqvt[eqvt]:
   "p \<bullet> env_lookup_instance \<E> x \<iota> = env_lookup_instance (p \<bullet> \<E>) (p \<bullet> x) (p \<bullet> \<iota>)"
   by (simp add: env_lookup_instance_def) (simp add: permute_pure)
@@ -117,8 +123,8 @@ done
 nominal_termination (eqvt)
   by lexicographic_order
 
-lemma env_update_eqvt[eqvt]: "p \<bullet> \<E>[x \<rightarrow> h] = (p \<bullet> \<E>)[p \<bullet> x \<rightarrow> p \<bullet> h]"
-  by (induct \<E>) (auto simp add: permute_pure env_update_def)
+lemma env_update_eqvt[eqvt]: "p \<bullet> \<E>[x \<rightarrow> h] = (p \<bullet> \<E>)[p \<bullet> x \<rightarrow> p \<bullet> h]"  
+  by (cases \<E>) (auto simp add: permute_pure env_update_def permute_env_ext_def)
 
 
 section\<open>Helpers for creating expressions\<close>
