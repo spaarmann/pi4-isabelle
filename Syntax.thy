@@ -61,8 +61,77 @@ instantiation heap_ext :: (type) pure begin
   instance by standard (auto simp add: permute_heap_ext_def)
 end
 
-(* Easier to work with than "var \<Rightarrow> heap" with Nominal2 because it has a finite support (I think) *)
-type_synonym env = "(var \<times> heap) list"
+record env =
+  heaps :: "(var \<times> heap) list"
+  bits :: "(nat \<times> bool) list"
+instantiation env_ext :: (pt) pt begin
+  definition permute_env_ext :: "perm \<Rightarrow> 'a env_ext \<Rightarrow> 'a env_ext" where
+    "p \<bullet> \<E> = \<E>\<lparr>heaps := p \<bullet> (heaps \<E>), more := p \<bullet> (more \<E>)\<rparr>"
+  instance by (standard) (auto simp add: permute_env_ext_def)
+end
+
+lemma permute_env_eq: "(p \<bullet> \<E> = \<E>) = (p \<bullet> (heaps \<E>) = heaps \<E> \<and> p \<bullet> (more \<E>) = more \<E>)"
+  apply (auto simp add: permute_env_ext_def)
+  subgoal by (cases \<E>) (auto)
+  subgoal by (cases \<E>) (auto)
+done
+
+instantiation env_ext :: (fs) fs begin
+  instance proof
+    fix \<E> :: "'a env_ext"
+    let ?heaps = "heaps \<E>" and ?more = "env.more \<E>"
+    have "supp \<E> = supp ?heaps \<union> supp ?more" proof
+      show "supp \<E> \<subseteq> supp ?heaps \<union> supp ?more" proof
+        fix a
+
+        let ?perms_\<E> = "{b. (a \<rightleftharpoons> b) \<bullet> \<E> \<noteq> \<E>}"
+          and ?perms_heaps = "{b. (a \<rightleftharpoons> b) \<bullet> ?heaps \<noteq> ?heaps}"
+          and ?perms_more = "{b. (a \<rightleftharpoons> b) \<bullet> ?more \<noteq> ?more}"
+  
+        have perms_sub: "?perms_\<E> \<subseteq> ?perms_heaps \<union> ?perms_more" by (auto simp add: permute_env_ext_def)
+        assume a_supp: "a \<in> supp \<E>"
+        hence "infinite ?perms_\<E>" by (auto simp add: supp_def)
+        hence "infinite (?perms_heaps \<union> ?perms_more)" using perms_sub by (metis infinite_super[of ?perms_\<E> "?perms_heaps \<union> ?perms_more"])
+        hence "infinite ?perms_heaps \<or> infinite ?perms_more" using perms_sub by (auto simp add: infinite_super infinite_Un)
+        thus "a \<in> supp ?heaps \<union> supp ?more" by (auto simp add: supp_def)
+      qed
+      show "supp ?heaps \<union> supp ?more \<subseteq> supp \<E>" proof
+        fix a
+
+        let ?perms_\<E> = "{b. (a \<rightleftharpoons> b) \<bullet> \<E> \<noteq> \<E>}"
+          and ?perms_heaps = "{b. (a \<rightleftharpoons> b) \<bullet> ?heaps \<noteq> ?heaps}"
+          and ?perms_more = "{b. (a \<rightleftharpoons> b) \<bullet> ?more \<noteq> ?more}"
+        have perms_sub: "?perms_heaps \<union> ?perms_more \<subseteq> ?perms_\<E>" proof (rule Un_least)
+          show "?perms_heaps \<subseteq> ?perms_\<E>" proof
+            fix b
+            assume "b \<in> ?perms_heaps"
+            thus "b \<in> ?perms_\<E>" by (auto simp add: permute_env_eq)
+          qed
+          show "?perms_more \<subseteq> ?perms_\<E>" proof
+            fix b
+            assume "b \<in> ?perms_more"
+            thus "b \<in> ?perms_\<E>" by (auto simp add: permute_env_eq)
+          qed
+        qed
+
+        assume "a \<in> supp ?heaps \<union> supp ?more"
+        hence "infinite ?perms_\<E>" proof
+          assume "a \<in> supp ?heaps"
+          hence "infinite ?perms_heaps" by (simp add: supp_def)
+          hence "infinite (?perms_heaps \<union> ?perms_more)" by (auto)
+          thus "infinite ?perms_\<E>" using perms_sub by (auto simp add: infinite_super)
+          next
+          assume "a \<in> supp ?more"
+          hence "infinite ?perms_more" by (simp add: supp_def)
+          hence "infinite (?perms_heaps \<union> ?perms_more)" by (auto)
+          thus "infinite ?perms_\<E>" using perms_sub by (auto simp add: infinite_super)
+        qed
+        thus "a \<in> supp \<E>" by (simp add: supp_def)
+      qed
+    qed
+    thus "finite (supp \<E>)" by (auto simp add: finite_supp)
+  qed
+end
 
 definition env_update :: "env \<Rightarrow> var \<Rightarrow> heap \<Rightarrow> env" ("_[_ \<rightarrow> _]" [1000, 49, 49] 1000)
 where
