@@ -4,11 +4,13 @@ no_notation inverse_divide (infixl "'/" 70) \<comment> \<open>avoid clash with d
 
 text\<open>For next meeting:
 Questions/Help:
-- heap_ty_empty definition.
+- heap_ty_empty definition
+- Chomping... Especially whether heapRef(..., b_n, n) is meant to have "two" n's or whether they're
+  the same. Thesis has a "b_n fresh" but paper has the line at the top of page 14.
+  The impl does seem to distinguish them. It also seems to potentially do some binder things
+  differently, see TODOs in Chomp.thy.
+  https://github.com/stg-tud/pi4/blob/main/lib/chomp.ml
 To talk about:
-- Well-formedness predicates from section 5.4 of the thesis.
-- In the thesis, "env" also maps bit variables to single bits. This is mentioned off-hand in one
-  place in the paper too I think.
 \<close>
 
 section\<open>Expressions and Formulas\<close>

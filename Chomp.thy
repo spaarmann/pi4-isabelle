@@ -25,7 +25,8 @@ nominal_function chomp\<^sub>1\<^sub>\<phi> :: "formula \<Rightarrow> var \<Righ
 nominal_termination (eqvt)
   by lexicographic_order
 
-(* TODO: Is `x` as both the chomp arg and the Sigma var correct here? Same for Refinement*)
+(* TODO: Is `x` as both the chomp arg and the Sigma var correct here? Same for Refinement.
+   I think the impl *doesn't* keep them the same?*)
 nominal_function chompRef\<^sub>1 :: "heap_ty \<Rightarrow> var \<Rightarrow> nat \<Rightarrow> heap_ty" where
   "chompRef\<^sub>1 (Sigma x \<tau>\<^sub>1 \<tau>\<^sub>2) x n = Sigma x (chompRef\<^sub>1 \<tau>\<^sub>1 x n) (chompRef\<^sub>1 \<tau>\<^sub>2 x n)" |
   "chompRef\<^sub>1 (Choice \<tau>\<^sub>1 \<tau>\<^sub>2) x n = Choice (chompRef\<^sub>1 \<tau>\<^sub>1 x n) (chompRef\<^sub>1 \<tau>\<^sub>2 x n)" |
@@ -48,5 +49,7 @@ nominal_function chomp\<^sub>1 :: "heap_ty \<Rightarrow> nat \<Rightarrow> heap_
   sorry
 nominal_termination (eqvt)
   by lexicographic_order
+
+nominal_function heapRef\<^sub>1\<^sub>e :: "exp \<Rightarrow> nat \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> nat"
 
 end
