@@ -22,6 +22,9 @@ instantiation bit :: pure begin
     "permute_bit _ b = b"
   instance by standard (auto simp add: permute_bit_def)
 end
+fun bit_from_bool :: "bool \<Rightarrow> bit" where
+  "bit_from_bool False = Zero" |
+  "bit_from_bool True = One"
 
 datatype packet = PktIn | PktOut
 instantiation packet :: pure begin
@@ -70,6 +73,9 @@ instantiation env_ext :: (pt) pt begin
   instance by (standard) (auto simp add: permute_env_ext_def)
 end
 
+lemma env_permute_bits: "bits (p \<bullet> \<E>) = bits \<E>"
+  by (auto simp add: permute_env_ext_def)
+
 lemma permute_env_eq: "(p \<bullet> \<E> = \<E>) = (p \<bullet> (heaps \<E>) = heaps \<E> \<and> p \<bullet> (more \<E>) = more \<E>)"
   apply (auto simp add: permute_env_ext_def)
   subgoal by (cases \<E>) (auto)
@@ -95,7 +101,7 @@ section\<open>Expressions and Formulas\<close>
 
 nominal_datatype sliceable = SlPacket var packet | SlInstance var instanc
 
-datatype val = VNum nat | VBv bv
+datatype val = VNum nat | VBv "bool list"
 instantiation val :: pure begin
   definition permute_val :: "perm \<Rightarrow> val \<Rightarrow> val" where
     "permute_val _ v = v"

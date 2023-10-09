@@ -175,14 +175,14 @@ subsection\<open>Denotational semantics\<close>
 nominal_function exp_sem :: "exp \<Rightarrow> env \<Rightarrow> val option" ("\<lbrakk>_ in _\<rbrakk>\<^sub>e" [50,60] 50)
 where
   "\<lbrakk>Num n in \<E>\<rbrakk>\<^sub>e = Some (VNum n)" |
-  "\<lbrakk>Bv bv in \<E>\<rbrakk>\<^sub>e = Some (VBv bv)" |
+  "\<lbrakk>Bv bv in \<E>\<rbrakk>\<^sub>e = map_option VBv (env_resolve_bits \<E> bv)" |
   "\<lbrakk>Plus e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = (case (\<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e, \<lbrakk>e\<^sub>2 in \<E>\<rbrakk>\<^sub>e) of
     (Some (VNum n\<^sub>1), Some (VNum n\<^sub>2)) \<Rightarrow> Some (VNum (n\<^sub>1 + n\<^sub>2)) | _ \<Rightarrow> None)" |
   "\<lbrakk>Concat e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = (case (\<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e, \<lbrakk>e\<^sub>2 in \<E>\<rbrakk>\<^sub>e) of
     (Some (VBv bv\<^sub>1), Some (VBv bv\<^sub>2)) \<Rightarrow> Some (VBv (bv\<^sub>1 @ bv\<^sub>2)) | _ \<Rightarrow> None)" |
-  "\<lbrakk>Packet x p in \<E>\<rbrakk>\<^sub>e = map_option (\<lambda>bv. VBv bv) (env_lookup_packet \<E> x p)" |
+  "\<lbrakk>Packet x p in \<E>\<rbrakk>\<^sub>e = map_option (VBv) (env_resolve_bits_option \<E> (env_lookup_packet \<E> x p))" |
   "\<lbrakk>Len x p in \<E>\<rbrakk>\<^sub>e = map_option (\<lambda>bv. VNum (length bv)) (env_lookup_packet \<E> x p)" |
-  "\<lbrakk>Slice sl n m in \<E>\<rbrakk>\<^sub>e = Option.bind (env_lookup_sliceable \<E> sl)
+  "\<lbrakk>Slice sl n m in \<E>\<rbrakk>\<^sub>e = Option.bind (env_resolve_bits_option \<E> (env_lookup_sliceable \<E> sl))
     (\<lambda>bv. if 0 \<le> n \<and> n < m \<and> m \<le> length bv + 1 then Some (VBv (slice bv n m)) else None)"
   subgoal by (simp add: eqvt_def exp_sem_graph_aux_def)
   subgoal by (erule exp_sem_graph.induct) (auto)

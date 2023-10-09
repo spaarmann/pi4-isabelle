@@ -85,8 +85,6 @@ text\<open>Type denoting heaps containing at least \<iota>, written as \<iota>\<
 definition heap_ty_at_least :: "instanc \<Rightarrow> heap_ty" where
   "heap_ty_at_least \<iota> = Refinement x Top (IsValid x \<iota>)"
 
-(* TODO: Make a definition for the \<epsilon> heap here, use it to finish TC_Remit. *)
-
 inductive exp_typing :: "ty_env \<Rightarrow> exp \<Rightarrow> base_ty \<Rightarrow> bool"
   ("_ \<turnstile>\<^sub>e _ : _" [51,60,60] 60)
 where
