@@ -123,27 +123,6 @@ done
 nominal_termination (eqvt)
   by lexicographic_order
 
-definition env_resolve_bit :: "env \<Rightarrow> bit \<Rightarrow> bool option" where
-  "env_resolve_bit \<E> b = (case b of
-    Zero \<Rightarrow> Some False |
-    One \<Rightarrow> Some True |
-    BitVar n \<Rightarrow> (map_of (bits \<E>) n))"
-lemma env_resolve_bit_eqvt[eqvt]: "p \<bullet> env_resolve_bit \<E> b = env_resolve_bit (p \<bullet> \<E>) (p \<bullet> b)"
-  by (cases b) (auto simp add: env_resolve_bit_def permute_pure env_permute_bits)
-lemma env_resolve_bit_permute: "env_resolve_bit (p \<bullet> \<E>) b = env_resolve_bit \<E> b"
-  by (cases b) (auto simp add: env_resolve_bit_def env_permute_bits)
-
-definition env_resolve_bits :: "env \<Rightarrow> bv \<Rightarrow> bool list option" where
-  "env_resolve_bits \<E> bv = List.those (map (\<lambda>b. env_resolve_bit \<E> b) bv)"
-lemma env_resolve_bits_eqvt[eqvt]: "p \<bullet> env_resolve_bits \<E> bv = env_resolve_bits (p \<bullet> \<E>) (p \<bullet> bv)"
-  by (auto simp add: env_resolve_bits_def permute_pure env_resolve_bit_permute)
-
-definition env_resolve_bits_option :: "env \<Rightarrow> bv option \<Rightarrow> bool list option" where
-  "env_resolve_bits_option \<E> bv = Option.bind bv (\<lambda>bits. env_resolve_bits \<E> bits)"
-lemma env_resolve_bits_option_eqvt[eqvt]:
-  "p \<bullet> env_resolve_bits_option \<E> bv = env_resolve_bits_option (p \<bullet> \<E>) (p \<bullet> bv)"
-  by (auto simp add: env_resolve_bits_option_def permute_pure env_resolve_bits_def env_resolve_bit_permute)
-
 lemma env_update_eqvt[eqvt]: "p \<bullet> \<E>[x \<rightarrow> h] = (p \<bullet> \<E>)[p \<bullet> x \<rightarrow> p \<bullet> h]"  
   by (cases \<E>) (auto simp add: permute_pure env_update_def permute_env_ext_def)
 

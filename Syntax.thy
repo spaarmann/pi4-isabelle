@@ -15,7 +15,7 @@ type_synonym field_name = string
 text\<open>Bit vectors are mostly boolean lists.
  There is an additional option of including bit variables. This is used by the chomp operation.
  Variables only appear internally, never in the surface syntax.\<close>
-datatype bit = Zero | One | BitVar nat
+datatype bit = Zero | One | BitVar
 type_synonym bv = "bit list"
 instantiation bit :: pure begin
   definition permute_bit :: "perm \<Rightarrow> bit \<Rightarrow> bit" where
@@ -25,6 +25,13 @@ end
 fun bit_from_bool :: "bool \<Rightarrow> bit" where
   "bit_from_bool False = Zero" |
   "bit_from_bool True = One"
+fun bool_from_bit :: "bit \<Rightarrow> bool option" where
+  "bool_from_bit Zero = Some False" |
+  "bool_from_bit One = Some True" |
+  "bool_from_bit BitVar = None"
+
+definition bv_to_bools :: "bv \<Rightarrow> bool list option" where
+  "bv_to_bools bv = those (map bool_from_bit bv)"
 
 datatype packet = PktIn | PktOut
 instantiation packet :: pure begin
@@ -66,20 +73,15 @@ end
 
 record env =
   heaps :: "(var \<times> heap) list"
-  bits :: "(nat \<times> bool) list"
 instantiation env_ext :: (pt) pt begin
   definition permute_env_ext :: "perm \<Rightarrow> 'a env_ext \<Rightarrow> 'a env_ext" where
     "p \<bullet> \<E> = \<E>\<lparr>heaps := p \<bullet> (heaps \<E>), more := p \<bullet> (more \<E>)\<rparr>"
   instance by (standard) (auto simp add: permute_env_ext_def)
 end
 
-lemma env_permute_bits: "bits (p \<bullet> \<E>) = bits \<E>"
-  by (auto simp add: permute_env_ext_def)
-
 lemma permute_env_eq: "(p \<bullet> \<E> = \<E>) = (p \<bullet> (heaps \<E>) = heaps \<E> \<and> p \<bullet> (more \<E>) = more \<E>)"
+  apply (cases \<E>)
   apply (auto simp add: permute_env_ext_def)
-  subgoal by (cases \<E>) (auto)
-  subgoal by (cases \<E>) (auto)
 done
 
 lemma env_supp_helper: "{b. (a \<rightleftharpoons> b) \<bullet> \<E> \<noteq> \<E>} =
