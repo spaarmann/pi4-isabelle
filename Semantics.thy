@@ -4,7 +4,6 @@ no_notation inverse_divide (infixl "'/" 70) \<comment> \<open>avoid clash with d
 
 text\<open>For next meeting:
 Questions/Help:
-- heap_ty_empty definition
 - Chomping... Especially whether heapRef(..., b_n, n) is meant to have "two" n's or whether they're
   the same. Thesis has a "b_n fresh" but paper has the line at the top of page 14.
   The impl does seem to distinguish them. It also seems to potentially do some binder things

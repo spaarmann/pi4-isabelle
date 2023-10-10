@@ -73,17 +73,17 @@ definition ty_excludes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<
 
 (* TODO: How do I actually write this? Just need some arbitrary variable that gets bound in the second type *)
 text\<open>Type denoting the empty heap, \<epsilon> in the paper.\<close>
-definition heap_ty_empty :: "header_table \<Rightarrow> heap_ty" where
-  "heap_ty_empty HT = Refinement (x) Top (mk_and [Not (IsValid x \<iota>). (\<iota>, _) \<leftarrow> HT])"
+definition heap_ty_empty :: "header_table \<Rightarrow> var \<Rightarrow> heap_ty" where
+  "heap_ty_empty HT x = Refinement (x) Top (mk_and [Not (IsValid x \<iota>). (\<iota>, _) \<leftarrow> HT])"
 
 text\<open>Type denoting heaps containing exclusively \<iota>, written as just \<iota> in the paper.\<close>
-definition heap_ty_only :: "header_table \<Rightarrow> instanc \<Rightarrow> heap_ty" where
-  "heap_ty_only HT \<iota> = Refinement x Top (And (IsValid x \<iota>)
+definition heap_ty_only :: "header_table \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> heap_ty" where
+  "heap_ty_only HT x \<iota> = Refinement x Top (And (IsValid x \<iota>)
                                              (mk_and [Not (IsValid x \<iota>'). (\<iota>', _) \<leftarrow> HT, \<iota> \<noteq> \<iota>']))"
 
-text\<open>Type denoting heaps containing at least \<iota>, written as \<iota>\<^sup>~ in the paper.\<close>
-definition heap_ty_at_least :: "instanc \<Rightarrow> heap_ty" where
-  "heap_ty_at_least \<iota> = Refinement x Top (IsValid x \<iota>)"
+text\<open>Type denoting heaps containing at least \<iota>, written as \<iota>~ in the paper.\<close>
+definition heap_ty_at_least :: "var \<Rightarrow> instanc \<Rightarrow> heap_ty" where
+  "heap_ty_at_least x \<iota> = Refinement x Top (IsValid x \<iota>)"
 
 inductive exp_typing :: "ty_env \<Rightarrow> exp \<Rightarrow> base_ty \<Rightarrow> bool"
   ("_ \<turnstile>\<^sub>e _ : _" [51,60,60] 60)
@@ -123,6 +123,7 @@ where
   TF_IsValid:   "\<lbrakk> map_of \<Gamma> x = Some _ \<rbrakk>
                 \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>f (IsValid x \<iota>) : Bool"
 
+(* TODO: Freshness assumptions everywhere *)
 inductive command_typing :: "header_table \<Rightarrow> ty_env \<Rightarrow> cmd \<Rightarrow> pi_ty \<Rightarrow> bool"
   ("_, _ \<turnstile> _ : _" [50,50,50,50] 60)
 where
@@ -152,19 +153,20 @@ where
   TC_Remit:     "\<lbrakk> ty_includes \<Gamma> \<tau>\<^sub>1 \<iota>;
                    map_of HT \<iota> = Some \<eta>;
                    \<phi> = And (Eq (Packet z PktIn) (Bv []))
-                           (Eq (Packet z PktOut) (mk_inst_read \<eta> \<iota> x))\<rbrakk>
+                           (Eq (Packet z PktOut) (mk_inst_read \<eta> \<iota> x));
+                   atom zz \<sharp> (x, y, z)\<rbrakk>
                  \<Longrightarrow> HT, \<Gamma> \<turnstile> Remit \<iota> : ((x : \<tau>\<^sub>1) \<rightarrow> Sigma y (Refinement z \<tau>\<^sub>1 (mk_heap_eq HT z x))
-                                                           (Refinement z (heap_ty_empty HT) \<phi>))" |
+                                                           (Refinement z (heap_ty_empty HT zz) \<phi>))" |
   TC_Add:       "\<lbrakk> ty_excludes \<Gamma> \<tau>\<^sub>1 \<iota>;
                    map_of HT \<iota> = Some \<eta>; init_header \<eta> = bv;
                    \<phi> = And (Eq (Packet z PktIn) (Packet z PktOut))
                            (And (Eq (Packet z PktOut) (Bv [])) (Eq (mk_inst_read \<eta> \<iota> z) (Bv bv))) \<rbrakk>
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> Add \<iota> : ((x : \<tau>\<^sub>1) \<rightarrow> Sigma y (Refinement z \<tau>\<^sub>1 (mk_heap_eq HT z x))
-                                                        (Refinement z (heap_ty_only HT \<iota>) \<phi>))" |
+                                                        (Refinement z (heap_ty_only HT zz \<iota>) \<phi>))" |
   TC_Reset:     "\<lbrakk> \<phi>\<^sub>1 = And (Eq (Packet z PktOut) (Bv [])) (Eq (Packet z PktIn) (Packet x PktOut));
                    \<phi>\<^sub>2 = And (Eq (Packet z PktOut) (Bv [])) (Eq (Packet z PktIn) (Packet x PktIn)) \<rbrakk>
-                \<Longrightarrow> HT, \<Gamma> \<turnstile> Reset : ((x : \<tau>\<^sub>1) \<rightarrow> Sigma y (Refinement z (heap_ty_empty HT) \<phi>\<^sub>1)
-                                                        (Refinement z (heap_ty_empty HT) \<phi>\<^sub>2))" |
+                \<Longrightarrow> HT, \<Gamma> \<turnstile> Reset : ((x : \<tau>\<^sub>1) \<rightarrow> Sigma y (Refinement z (heap_ty_empty HT zz) \<phi>\<^sub>1)
+                                                        (Refinement z (heap_ty_empty HT zz) \<phi>\<^sub>2))" |
   TC_Ascribe:   "\<lbrakk> HT, \<Gamma> \<turnstile> c : \<sigma> \<rbrakk>
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> Ascribe c \<sigma> : \<sigma>" |
   TC_Sub:       "\<lbrakk> \<Gamma> \<turnstile> \<tau>\<^sub>1 <: \<tau>\<^sub>3; (\<Gamma>\<^bold>, x : \<tau>\<^sub>1) \<turnstile> \<tau>\<^sub>4 <: \<tau>\<^sub>2;
