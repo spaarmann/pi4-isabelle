@@ -48,15 +48,44 @@ nominal_function chomp\<^sub>1 :: "heap_ty \<Rightarrow> heap_ty" where
 nominal_termination (eqvt)
   by lexicographic_order
 
-nominal_function heapRef\<^sub>1\<^sub>e :: "exp \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> exp" where
-  "heapRef\<^sub>1\<^sub>e (Bv (b#bv)) x \<iota> sz n = Concat (if b = BitVar
+text\<open>We outline the recursive bitvector case for heapRef1e because lexicographic_order is not able
+to prove termination otherwise, since we would have to construct a new Bv exp in the recursive call.\<close>
+nominal_function heapRefBv :: "bv \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> exp" where
+  "heapRefBv (b#bv) x \<iota> sz n = Concat (if b = BitVar
     then Slice (SlInstance x \<iota>) (sz - n) (sz - n + 1)
-    else Bv [b]) (heapRef\<^sub>1\<^sub>e (Bv bv) x \<iota> sz n)" |
+    else Bv [b]) (heapRefBv bv x \<iota> sz n)" |
+  "heapRefBv [] _ _ _ _ = Bv []"
+  sorry
+nominal_termination (eqvt)
+  by lexicographic_order
+
+nominal_function heapRef\<^sub>1\<^sub>e :: "exp \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> exp" where
+  "heapRef\<^sub>1\<^sub>e (Bv bv) x \<iota> sz n = heapRefBv bv x \<iota> sz n" |
   "heapRef\<^sub>1\<^sub>e (Plus e\<^sub>1 e\<^sub>2) x \<iota> sz n = Plus (heapRef\<^sub>1\<^sub>e e\<^sub>1 x \<iota> sz n) (heapRef\<^sub>1\<^sub>e e\<^sub>2 x \<iota> sz n)" |
   "heapRef\<^sub>1\<^sub>e (Concat e\<^sub>1 e\<^sub>2) x \<iota> sz n = Concat (heapRef\<^sub>1\<^sub>e e\<^sub>1 x \<iota> sz n) (heapRef\<^sub>1\<^sub>e e\<^sub>2 x \<iota> sz n)" |
   "heapRef\<^sub>1\<^sub>e e _ _ _ _ = e"
   sorry
 nominal_termination (eqvt)
-  by size_change
+  by lexicographic_order
+
+nominal_function heapRef\<^sub>1\<^sub>\<phi> :: "formula \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> formula" where
+  "heapRef\<^sub>1\<^sub>\<phi> (Eq e\<^sub>1 e\<^sub>2) x \<iota> sz n = Eq (heapRef\<^sub>1\<^sub>e e\<^sub>1 x \<iota> sz n) (heapRef\<^sub>1\<^sub>e e\<^sub>2 x \<iota> sz n)" |
+  "heapRef\<^sub>1\<^sub>\<phi> (Gt e\<^sub>1 e\<^sub>2) x \<iota> sz n = Gt (heapRef\<^sub>1\<^sub>e e\<^sub>1 x \<iota> sz n) (heapRef\<^sub>1\<^sub>e e\<^sub>2 x \<iota> sz n)" |
+  "heapRef\<^sub>1\<^sub>\<phi> (And \<phi>\<^sub>1 \<phi>\<^sub>2) x \<iota> sz n = And (heapRef\<^sub>1\<^sub>\<phi> \<phi>\<^sub>1 x \<iota> sz n) (heapRef\<^sub>1\<^sub>\<phi> \<phi>\<^sub>2 x \<iota> sz n)" |
+  "heapRef\<^sub>1\<^sub>\<phi> (Not \<phi>) x \<iota> sz n = Not (heapRef\<^sub>1\<^sub>\<phi> \<phi> x \<iota> sz n)" |
+  "heapRef\<^sub>1\<^sub>\<phi> \<phi> _ _ _ _ = \<phi>"
+  sorry
+nominal_termination (eqvt)
+  by lexicographic_order
+
+nominal_function heapRef\<^sub>1 :: "heap_ty \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> heap_ty" where
+  "atom x \<sharp> y \<Longrightarrow> heapRef\<^sub>1 (Sigma x \<tau>\<^sub>1 \<tau>\<^sub>2) y \<iota> sz n = Sigma x (heapRef\<^sub>1 \<tau>\<^sub>1 y \<iota> sz n) (heapRef\<^sub>1 \<tau>\<^sub>2 y \<iota> sz n)" |
+  "heapRef\<^sub>1 (Choice \<tau>\<^sub>1 \<tau>\<^sub>2) y \<iota> sz n = Choice (heapRef\<^sub>1 \<tau>\<^sub>1 y \<iota> sz n) (heapRef\<^sub>1 \<tau>\<^sub>2 y \<iota> sz n)" |
+  "atom x \<sharp> y \<Longrightarrow> heapRef\<^sub>1 (Refinement x \<tau> \<phi>) y \<iota> sz n = Refinement x (heapRef\<^sub>1 \<tau> y \<iota> sz n) (heapRef\<^sub>1\<^sub>\<phi> \<phi> y \<iota> sz n)" |
+  "atom x \<sharp> y \<Longrightarrow> heapRef\<^sub>1 (Substitution \<tau>\<^sub>1 x \<tau>\<^sub>2) y \<iota> sz n = Substitution (heapRef\<^sub>1 \<tau>\<^sub>1 y \<iota> sz n) x (heapRef\<^sub>1 \<tau>\<^sub>2 y \<iota> sz n)" |
+  "heapRef\<^sub>1 \<tau> _ _ _ _ = \<tau>"
+  sorry
+nominal_termination (eqvt)
+  by lexicographic_order
 
 end
