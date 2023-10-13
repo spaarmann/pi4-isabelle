@@ -99,6 +99,7 @@ definition env_update :: "env \<Rightarrow> var \<Rightarrow> heap \<Rightarrow>
 where
   "\<E>[x \<rightarrow> h] = \<E>\<lparr>heaps := AList.update x h (heaps \<E>)\<rparr>"
 
+
 section\<open>Expressions and Formulas\<close>
 
 nominal_datatype sliceable = SlPacket var packet | SlInstance var instanc
