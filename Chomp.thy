@@ -214,4 +214,14 @@ done
 nominal_termination (eqvt)
   by lexicographic_order
 
+nominal_function chompRec :: "heap_ty \<Rightarrow> nat \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> nat \<Rightarrow> heap_ty" where
+  "chompRec \<tau> n x \<iota> sz = (if n = 0 then \<tau> else
+    (let \<tau>' = heapRef\<^sub>1 (chomp\<^sub>1 \<tau>) x \<iota> sz n in chompRec \<tau>' (n - 1) x \<iota> sz))"
+  subgoal by (simp add: eqvt_def chompRec_graph_aux_def)
+  apply (auto)
+done
+
+definition chomp :: "heap_ty \<Rightarrow> header_type \<Rightarrow> instanc \<Rightarrow> var \<Rightarrow> heap_ty" where
+  "chomp \<tau> \<eta> \<iota> x = chompRec \<tau> (header_length \<eta>) x \<iota> (header_length \<eta>)"
+
 end
