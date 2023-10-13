@@ -2,26 +2,6 @@ theory Semantics imports Syntax Utils begin
 
 no_notation inverse_divide (infixl "'/" 70) \<comment> \<open>avoid clash with division notation\<close>
 
-text\<open>For next meeting:
-Questions/Help:
-- Chomping... Especially whether heapRef(..., b_n, n) is meant to have "two" n's or whether they're
-  the same. Thesis has a "b_n fresh" but paper has the line at the top of page 14.
-  The impl does seem to distinguish them. It also seems to potentially do some binder things
-  differently, see TODOs in Chomp.thy.
-  https://github.com/stg-tud/pi4/blob/main/lib/chomp.ml
-  The only place these are introduced is in the actual `chomp` definition in the thesis (p. 68/79).
-  From that, two things:
-  - It seems like using b_n = n would work fine here.
-  - It also seems like there could only ever possibly be a single variable in any given type?
-    And like types with variables only ever exist temporarily to be passed from chomp1 to heapRef1?
-    Oh, unless the b_0 literals are not a mistake and really are meant to be the 0th. But then at
-    least that definitely means bit variables are id'd by the number I think.
-    But the b0 literals do seem to be a mistake as far as I can tell.
-    Maybe they even intend b_n specifically to be the only bit variable that exists? But then the
-    references to having them in env don't seem to make any sense.
-To talk about:
-\<close>
-
 section\<open>Expressions and Formulas\<close>
 
 text\<open>About the semantics for expressions and formulas...
