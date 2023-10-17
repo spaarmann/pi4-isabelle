@@ -1,5 +1,7 @@
 theory Chomp imports Syntax Utils begin
 
+section\<open>Syntactic chomp definition\<close>
+
 nominal_function "chomp\<^sub>1\<^sub>e" :: "exp \<Rightarrow> var \<Rightarrow> exp" where
   "chomp\<^sub>1\<^sub>e (Len x PktIn) y = (if x = y then Plus (Num 1) (Len x PktIn) else (Len x PktIn))" |
   "chomp\<^sub>1\<^sub>e (Packet x PktIn) y = (if x = y then Concat (Bv [BitVar]) (Packet x PktIn)
@@ -223,5 +225,11 @@ done
 
 definition chomp :: "heap_ty \<Rightarrow> header_type \<Rightarrow> instanc \<Rightarrow> var \<Rightarrow> heap_ty" where
   "chomp \<tau> \<eta> \<iota> x = chompRec \<tau> (header_length \<eta>) x \<iota> (header_length \<eta>)"
+
+
+section\<open>Semantic chomp definition\<close>
+
+definition chomp\<^sub>S :: "heap \<Rightarrow> nat \<Rightarrow> heap" where
+  "chomp\<^sub>S h n = h\<lparr> heap_pkt_in := take n (heap_pkt_in h) \<rparr>"
 
 end

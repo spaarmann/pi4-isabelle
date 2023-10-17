@@ -66,6 +66,9 @@ definition join_headers :: "headers \<Rightarrow> headers \<Rightarrow> headers"
 
 section\<open>Heaps\<close>
 
+definition empty_heap :: "heap" where
+  "empty_heap = \<lparr> heap_pkt_in = [], heap_pkt_out = [], headers = empty_headers \<rparr>"
+
 definition heap_dom :: "heap \<Rightarrow> instanc set" where
   "heap_dom h = dom (heap_headers h)"
 
@@ -93,6 +96,9 @@ lemma concat_heaps_eqvt[eqvt]: "p \<bullet> concat_heaps h\<^sub>1 h\<^sub>2 = c
 
 
 section\<open>Environments\<close>
+
+definition env_dom :: "env \<Rightarrow> var set" where
+  "env_dom \<E> = fst ` set (heaps \<E>)"
 
 lemma env_heaps_eqvt[eqvt]: "p \<bullet> heaps \<E> = heaps (p \<bullet> \<E>)"
   by (simp add: permute_env_ext_def)

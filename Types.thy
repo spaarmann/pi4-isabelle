@@ -173,4 +173,32 @@ where
                    HT, \<Gamma> \<turnstile> c : ((x : \<tau>\<^sub>3) \<rightarrow> \<tau>\<^sub>4) \<rbrakk>
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> c : ((x : \<tau>\<^sub>1) \<rightarrow> \<tau>\<^sub>2)"
 
+
+section\<open>Correctness of Chomp\<close>
+
+lemma semantic_chomp_exp:
+  fixes e::exp and h::heap and h'::heap and \<E>::env and \<E>'::env and x::var and \<iota>::instanc
+    and HT :: header_table
+  assumes "h' = chomp\<^sub>S h 1"
+      and "\<E>' = \<E>[x \<rightarrow> empty_heap\<lparr> heap_headers := empty_headers(\<iota> \<mapsto> v) \<rparr>]"
+      and "x \<in> env_dom \<E> \<Longrightarrow> ((Some v = (map_option (\<lambda>bv. bv @ take 1 (heap_pkt_in h)) (env_lookup_instance \<E> x \<iota>)))
+                            \<and> env_lookup_packet \<E> x PktIn = Some []
+                            \<and> env_lookup_packet \<E> x PktOut = Some [])"
+      and "x \<notin> env_dom \<E> \<Longrightarrow> (v = take 1 (heap_pkt_in h)) \<and> atom x \<sharp> e"
+      and "map_of HT \<iota> = Some \<eta>"
+  shows "(\<lbrakk>e in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e) = (\<lbrakk>(heapRef\<^sub>1\<^sub>e (chomp\<^sub>1\<^sub>e e y) x \<iota> (header_length \<eta>) 1) in (\<E>'[y \<rightarrow> h'])\<rbrakk>\<^sub>e)"
+  
+
+lemma semantic_chomp:
+  fixes x::var and \<tau>::heap_ty and \<E>::env and h::heap and HT::header_table and \<iota>::instanc
+  assumes "atom x \<sharp> \<tau>"
+      and "h \<in> \<lbrakk>\<tau> in \<E>\<rbrakk>\<^sub>t"
+      and "map_of HT \<iota> = Some \<eta>"
+      and "length (heap_pkt_in h) \<ge> header_length \<eta>"
+  shows "\<exists>h' \<in> \<lbrakk>chomp \<tau> \<eta> \<iota> x
+          in \<E>[x \<rightarrow> empty_heap\<lparr> heap_headers := empty_headers(
+                \<iota> := Some (take (header_length n) (heap_pkt_in h))
+          ) \<rparr>]\<rbrakk>\<^sub>t. h' = chomp\<^sub>S h (header_length \<eta>)"
+sorry
+
 end
