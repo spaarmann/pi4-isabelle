@@ -146,6 +146,13 @@ done
 nominal_termination (eqvt)
   by lexicographic_order
 
+text\<open>It is useful to have heapRef not change bit vectors that contain no BitVars at all (and the
+paper claims so despite mirroring the heapRefBv definition above), so we flatten Concats of single
+bits produced by heapRefBv.\<close>
+nominal_function flattenBvConcats :: "exp \<Rightarrow> exp" where
+  "flattenBvConcats (Concat e\<^sub>1 e\<^sub>2) = (case (flattenBvConcats e\<^sub>1, flattenBvConcats e\<^sub>2) of
+    (Bv bv\<^sub>1, Bv bv\<^sub>2) \<Rightarrow> Bv (bv\<^sub>1 @ bv\<^sub>2) | (_, _) \<Rightarrow> Concat e\<^sub>1 e\<^sub>2)"
+
 nominal_function heapRef\<^sub>1\<^sub>e :: "exp \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> exp" where
   "heapRef\<^sub>1\<^sub>e (Bv bv) x \<iota> sz n = heapRefBv bv x \<iota> sz n" |
   "heapRef\<^sub>1\<^sub>e (Plus e\<^sub>1 e\<^sub>2) x \<iota> sz n = Plus (heapRef\<^sub>1\<^sub>e e\<^sub>1 x \<iota> sz n) (heapRef\<^sub>1\<^sub>e e\<^sub>2 x \<iota> sz n)" |

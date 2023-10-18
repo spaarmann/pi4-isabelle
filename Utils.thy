@@ -25,6 +25,13 @@ lemma alist_update_eqvt[eqvt]: "p \<bullet> AList.update k v xs = AList.update (
 lemma fresh_star_empty[simp]: "{} \<sharp>* x" by (simp add: fresh_star_def)
 
 
+section\<open>Bitvectors\<close>
+
+lemma bv_to_bools_some:
+  assumes "bv_to_bools bv = Some bits"
+  shows "BitVar \<notin> set bv"
+  sorry
+
 section\<open>Headers\<close>
 
 definition empty_headers :: headers where "empty_headers = Map.empty"
