@@ -41,7 +41,7 @@ fun header_field_to_range_helper :: "nat \<Rightarrow> field list \<Rightarrow> 
     else header_field_to_range_helper (acc + field_length f) fs tgt)" |
   "header_field_to_range_helper acc [] tgt = undefined"
 
-fun header_field_to_range :: "header_type \<Rightarrow> field_name \<Rightarrow> (nat \<times> nat)" where
+definition header_field_to_range :: "header_type \<Rightarrow> field_name \<Rightarrow> (nat \<times> nat)" where
   "header_field_to_range \<eta> tgt = header_field_to_range_helper 0 (header_fields \<eta>) tgt"
 lemma header_field_to_range_eqvt[eqvt]:
   "p \<bullet> header_field_to_range \<eta> f = header_field_to_range (p \<bullet> \<eta>) (p \<bullet> f)"
@@ -122,19 +122,12 @@ lemma env_lookup_instance_eqvt[eqvt]:
   "p \<bullet> env_lookup_instance \<E> x \<iota> = env_lookup_instance (p \<bullet> \<E>) (p \<bullet> x) (p \<bullet> \<iota>)"
   by (simp add: env_lookup_instance_def) (simp add: permute_pure)
 
-nominal_function env_lookup_sliceable :: "env \<Rightarrow> sliceable \<Rightarrow> bv option" where
+fun env_lookup_sliceable :: "env \<Rightarrow> sliceable \<Rightarrow> bv option" where
   "env_lookup_sliceable \<E> (SlPacket x p) = env_lookup_packet \<E> x p" |
   "env_lookup_sliceable \<E> (SlInstance x \<iota>) = env_lookup_instance \<E> x \<iota>"
-  subgoal by (simp add: eqvt_def env_lookup_sliceable_graph_aux_def
-                        env_lookup_packet_def env_lookup_instance_def)
-  subgoal by (erule env_lookup_sliceable_graph.induct) (auto)
-  apply clarify
-  subgoal for P \<E> s
-    by (rule sliceable.strong_exhaust[of s P]) (auto)
-  apply (simp_all)
-done
-nominal_termination (eqvt)
-  by lexicographic_order
+lemma env_lookup_sliceable_eqvt[eqvt]:
+  "p \<bullet> env_lookup_sliceable \<E> sl = env_lookup_sliceable (p \<bullet> \<E>) (p \<bullet> sl)"
+  by (cases sl) (auto)
 
 lemma env_update_eqvt[eqvt]: "p \<bullet> \<E>[x \<rightarrow> h] = (p \<bullet> \<E>)[p \<bullet> x \<rightarrow> p \<bullet> h]"  
   by (cases \<E>) (auto simp add: permute_pure env_update_def permute_env_ext_def)
@@ -152,7 +145,8 @@ definition mk_field_read :: "header_type \<Rightarrow> instanc \<Rightarrow> fie
   "mk_field_read \<eta> \<iota> f x = (let (n, m) = header_field_to_range \<eta> f in Slice (SlInstance x \<iota>) n m)"
 lemma mk_field_read_eqvt[eqvt]:
   "p \<bullet> mk_field_read \<eta> \<iota> f x = mk_field_read (p \<bullet> \<eta>) (p \<bullet> \<iota>) (p \<bullet> f) (p \<bullet> x)"
-  by (simp add: mk_field_read_def permute_pure)
+  by (auto simp add: mk_field_read_def permute_pure)
+
 
 section\<open>Helper for creating formulas\<close>
 

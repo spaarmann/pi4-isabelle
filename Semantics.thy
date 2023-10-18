@@ -46,7 +46,7 @@ name.
 
 text\<open>The substitution functions for expressions and formulas just need to support replacing one
 variable with another.\<close>
-nominal_function subst_var_exp :: "exp \<Rightarrow> var \<Rightarrow> var \<Rightarrow> exp" ("_[_ '/ _]\<^sub>e" [1000, 49, 49] 1000)
+fun subst_var_exp :: "exp \<Rightarrow> var \<Rightarrow> var \<Rightarrow> exp" ("_[_ '/ _]\<^sub>e" [1000, 49, 49] 1000)
 where
   "(Num n)[s/y]\<^sub>e = Num n" |
   "(Bv bv)[s/y]\<^sub>e = Bv bv" |
@@ -56,17 +56,11 @@ where
   "(Len x p)[s/y]\<^sub>e = (if x = y then Len s p else Len x p)" |
   "(Slice (SlPacket x p) n m)[s/y]\<^sub>e = Slice (SlPacket (if x = y then s else x) p) n m" |
   "(Slice (SlInstance x \<iota>) n m)[s/y]\<^sub>e = Slice (SlInstance (if x = y then s else x) \<iota>) n m"
-  subgoal by (simp add: eqvt_def subst_var_exp_graph_aux_def)
-  subgoal by (simp)
-  apply (clarify)
-  subgoal for P e s y
-    apply (rule exp.strong_exhaust[of e P]) apply (auto)
-    apply (rule sliceable.strong_exhaust) apply (auto)
-  done
-  apply (auto)
+lemma subst_var_exp_eqvt[eqvt]: "p \<bullet> e[s/y]\<^sub>e = (p \<bullet> e)[(p \<bullet> s)/(p \<bullet> y)]\<^sub>e"
+  apply (induction e)
+  apply (auto simp add: permute_pure)
+  subgoal for sl apply (cases sl) apply (auto) done
 done
-nominal_termination (eqvt)
-  by lexicographic_order
 
 nominal_function subst_var_formula :: "formula \<Rightarrow> var \<Rightarrow> var \<Rightarrow> formula"
   ("_[_ '/ _]\<^sub>f" [1000, 49, 49] 1000)
@@ -163,7 +157,7 @@ where
 
 subsection\<open>Denotational semantics\<close>
 
-nominal_function exp_sem :: "exp \<Rightarrow> env \<Rightarrow> val option" ("\<lbrakk>_ in _\<rbrakk>\<^sub>e" [50,60] 50)
+fun exp_sem :: "exp \<Rightarrow> env \<Rightarrow> val option" ("\<lbrakk>_ in _\<rbrakk>\<^sub>e" [50,60] 50)
 where
   "\<lbrakk>Num n in \<E>\<rbrakk>\<^sub>e = Some (VNum n)" |
   "\<lbrakk>Bv bv in \<E>\<rbrakk>\<^sub>e = map_option VBv (bv_to_bools bv)" |
@@ -176,15 +170,14 @@ where
   "\<lbrakk>Slice sl n m in \<E>\<rbrakk>\<^sub>e = Option.bind (env_lookup_sliceable \<E> sl)
     (\<lambda>bv. if 0 \<le> n \<and> n < m \<and> m \<le> length bv + 1
           then map_option VBv (bv_to_bools (slice bv n m)) else None)"
-  subgoal by (simp add: eqvt_def exp_sem_graph_aux_def)
-  subgoal by (erule exp_sem_graph.induct) (auto)
-  apply clarify
-  subgoal for P e \<E>
-    by (rule exp.strong_exhaust[of e P]) (auto)
-  apply (simp_all)
+lemma exp_sem_eqvt[eqvt]: "p \<bullet> (\<lbrakk>e in \<E>\<rbrakk>\<^sub>e) = (\<lbrakk>p \<bullet> e in p \<bullet> \<E>\<rbrakk>\<^sub>e)"
+  apply (induction e)
+  subgoal by (auto)
+  subgoal by (auto)
+  subgoal by (auto simp add: permute_pure)
+  subgoal by (auto simp add: permute_pure)
+  apply (auto)
 done
-nominal_termination (eqvt)
-  by lexicographic_order
 
 text\<open>Unlike for the small-step semantics, semantic expression equality and comparison is explicitly
 defined to be False when the semantics of either operand are undefined. (See section 3.3, p. 9)\<close>

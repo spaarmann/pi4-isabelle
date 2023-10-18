@@ -102,7 +102,32 @@ where
 
 section\<open>Expressions and Formulas\<close>
 
-nominal_datatype sliceable = SlPacket var packet | SlInstance var instanc
+datatype sliceable = SlPacket var packet | SlInstance var instanc
+instantiation sliceable :: pt begin
+  fun permute_sliceable :: "perm \<Rightarrow> sliceable \<Rightarrow> sliceable" where
+    "p \<bullet> (SlPacket x pkt) = SlPacket (p \<bullet> x) pkt" |
+    "p \<bullet> (SlInstance x \<iota>) = SlInstance (p \<bullet> x) \<iota>"
+  instance apply (standard)
+    subgoal for x by (cases x) (auto)
+    subgoal for p q x by (cases x) (auto)
+  done
+end
+instantiation sliceable :: fs begin
+  instance proof
+    fix x::sliceable
+    show "finite (supp x)" proof (cases x)
+      case (SlPacket y pkt) then have "supp x = supp y" by (auto simp add: supp_def)
+        then show "finite (supp x)" by (auto simp add: finite_supp)
+      next
+      case (SlInstance y \<iota>) then have "supp x = supp y" by (auto simp add: supp_def)
+        then show "finite (supp x)" by (auto simp add: finite_supp)
+    qed
+  qed
+end
+lemma SlPacket_eqvt[eqvt]: "p \<bullet> (SlPacket x pkt) = SlPacket (p \<bullet> x) (p \<bullet> pkt)"
+  by (auto simp add: permute_pure)
+lemma SlInstance_eqvt[eqvt]: "p \<bullet> (SlInstance x \<iota>) = SlInstance (p \<bullet> x) (p \<bullet> \<iota>)"
+  by (auto simp add: permute_pure)
 
 datatype val = VNum nat | VBv "bool list"
 instantiation val :: pure begin
@@ -111,11 +136,90 @@ instantiation val :: pure begin
   instance by standard (auto simp add: permute_val_def)
 end
 
-nominal_datatype exp =
+datatype exp =
   Num nat | Bv bv |
   Plus exp exp | Concat exp exp |
   Packet var packet | Len var packet |
   Slice sliceable nat nat
+instantiation exp :: pt begin
+  fun permute_exp :: "perm \<Rightarrow> exp \<Rightarrow> exp" where
+    "p \<bullet> (Num n) = Num n" |
+    "p \<bullet> (Bv bv) = Bv bv" |
+    "p \<bullet> (Plus e\<^sub>1 e\<^sub>2) = Plus (p \<bullet> e\<^sub>1) (p \<bullet> e\<^sub>2)" |
+    "p \<bullet> (Concat e\<^sub>1 e\<^sub>2) = Concat (p \<bullet> e\<^sub>1) (p \<bullet> e\<^sub>2)" |
+    "p \<bullet> (Packet x pkt) = Packet (p \<bullet> x) pkt" |
+    "p \<bullet> (Len x pkt) = Len (p \<bullet> x) pkt" |
+    "p \<bullet> (Slice sl n m) = Slice (p \<bullet> sl) n m"
+  instance apply (standard)
+    subgoal for e by (induction e) (auto)
+    subgoal for p q e by (induction e) (auto)
+   done
+end
+declare permute_exp.simps(3)[eqvt]
+declare permute_exp.simps(4)[eqvt]
+
+lemma supp_Plus: "supp (Plus e\<^sub>1 e\<^sub>2) = supp e\<^sub>1 \<union> supp e\<^sub>2"
+proof -
+  have "\<forall>a. {b. (a \<rightleftharpoons> b) \<bullet> (Plus e\<^sub>1 e\<^sub>2) \<noteq> (Plus e\<^sub>1 e\<^sub>2)}
+    = {b. (a \<rightleftharpoons> b) \<bullet> e\<^sub>1 \<noteq> e\<^sub>1} \<union> {b. (a \<rightleftharpoons> b) \<bullet> e\<^sub>2 \<noteq> e\<^sub>2}" by (auto)
+  then show ?thesis by (auto simp add: supp_def)
+qed
+lemma supp_Concat: "supp (Concat e\<^sub>1 e\<^sub>2) = supp e\<^sub>1 \<union> supp e\<^sub>2"
+proof -
+  have "\<forall>a. {b. (a \<rightleftharpoons> b) \<bullet> (Concat e\<^sub>1 e\<^sub>2) \<noteq> (Concat e\<^sub>1 e\<^sub>2)}
+    = {b. (a \<rightleftharpoons> b) \<bullet> e\<^sub>1 \<noteq> e\<^sub>1} \<union> {b. (a \<rightleftharpoons> b) \<bullet> e\<^sub>2 \<noteq> e\<^sub>2}" by (auto)
+  then show ?thesis by (auto simp add: supp_def)
+qed
+lemma supp_Packet: "supp (Packet x pkt) = supp x"
+proof -
+  have "\<forall>a. {b. (a \<rightleftharpoons> b) \<bullet> (Packet x pkt) \<noteq> (Packet x pkt)} = {b. (a \<rightleftharpoons> b) \<bullet> x \<noteq> x}" by (auto)
+  then show ?thesis by (auto simp add: supp_def)
+qed
+lemma supp_Len: "supp (Len x pkt) = supp x"
+proof -
+  have "\<forall>a. {b. (a \<rightleftharpoons> b) \<bullet> (Len x pkt) \<noteq> (Len x pkt)} = {b. (a \<rightleftharpoons> b) \<bullet> x \<noteq> x}" by (auto)
+  then show ?thesis by (auto simp add: supp_def)
+qed
+lemma supp_Slice: "supp (Slice sl n m) = supp sl"
+proof -
+  have "\<forall>a. {b. (a \<rightleftharpoons> b) \<bullet> (Slice sl n m) \<noteq> (Slice sl n m)} = {b. (a \<rightleftharpoons> b) \<bullet> sl \<noteq> sl}" by (auto)
+  then show ?thesis by (auto simp add: supp_def)
+qed
+
+instantiation exp :: fs begin
+  instance proof
+    fix e::exp
+    show "finite (supp e)" proof (induction e)
+        case (Num n) have "supp (Num n) = {}" by (auto simp add: supp_def)
+        thus "finite (supp (Num n))" by (simp)
+      next
+        case (Bv bv) have "supp (Bv bv) = {}" by (auto simp add: supp_def)
+        thus "finite (supp (Bv bv))" by (simp)
+      next
+        case (Plus e\<^sub>1 e\<^sub>2)
+        thus "finite (supp (Plus e\<^sub>1 e\<^sub>2))" by (auto simp add: supp_Plus)
+      next
+        case (Concat e\<^sub>1 e\<^sub>2)
+        thus "finite (supp (Concat e\<^sub>1 e\<^sub>2))" by (auto simp add: supp_Concat)
+      next
+        case (Packet x pkt) have "supp (Packet x pkt) = supp x" by (auto simp add: supp_Packet)
+        thus "finite (supp (Packet x pkt))" by (auto simp add: finite_supp)
+      next
+        case (Len x pkt) have "supp (Len x pkt) = supp x" by (auto simp add: supp_Len)
+        thus "finite (supp (Len x pkt))" by (auto simp add: finite_supp)
+      next
+        case (Slice sl n m) have "supp (Slice sl n m) = supp sl" by (auto simp add: supp_Slice)
+        thus "finite (supp (Slice sl n m))" by (auto simp add: finite_supp)
+    qed
+  qed
+end
+lemma Num_eqvt[eqvt]: "p \<bullet> (Num n) = Num (p \<bullet> n)" by (simp add: permute_pure)
+lemma Bv_eqvt[eqvt]: "p \<bullet> (Bv bv) = Bv (p \<bullet> bv)" by (simp add: permute_pure)
+lemma Packet_eqvt[eqvt]: "p \<bullet> (Packet x pkt) = Packet (p \<bullet> x) (p \<bullet> pkt)" by (simp add: permute_pure)
+lemma Len_eqvt[eqvt]: "p \<bullet> (Len x pkt) = Len (p \<bullet> x) (p \<bullet> pkt)" by (simp add: permute_pure)
+lemma Slice_eqvt[eqvt]: "p \<bullet> (Slice sl n m) = Slice (p \<bullet> sl) (p \<bullet> n) (p \<bullet> m)"
+  by (cases sl) (auto simp add: permute_pure)
+
 
 nominal_datatype formula =
   FTrue | FFalse |
@@ -127,7 +231,7 @@ inductive "value\<^sub>e" :: "exp \<Rightarrow> bool" where
   "value\<^sub>e (Bv _)"
 declare value\<^sub>e.intros[simp]
 declare value\<^sub>e.intros[intro]
-equivariance "value\<^sub>e"
+(*equivariance "value\<^sub>e"*)
 
 inductive "value\<^sub>f" :: "formula \<Rightarrow> bool" where
   "value\<^sub>f FTrue" |

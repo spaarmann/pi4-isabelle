@@ -2,7 +2,7 @@ theory Chomp imports Syntax Utils begin
 
 section\<open>Syntactic chomp definition\<close>
 
-nominal_function "chomp\<^sub>1\<^sub>e" :: "exp \<Rightarrow> var \<Rightarrow> exp" where
+fun "chomp\<^sub>1\<^sub>e" :: "exp \<Rightarrow> var \<Rightarrow> exp" where
   "chomp\<^sub>1\<^sub>e (Len x PktIn) y = (if x = y then Plus (Num 1) (Len x PktIn) else (Len x PktIn))" |
   "chomp\<^sub>1\<^sub>e (Packet x PktIn) y = (if x = y then Concat (Bv [BitVar]) (Packet x PktIn)
                                            else (Packet x PktIn))" |
@@ -18,23 +18,13 @@ nominal_function "chomp\<^sub>1\<^sub>e" :: "exp \<Rightarrow> var \<Rightarrow>
   "chomp\<^sub>1\<^sub>e (Packet x PktOut) _ = Packet x PktOut" |
   "chomp\<^sub>1\<^sub>e (Slice (SlPacket x PktOut) l r) _ = Slice (SlPacket x PktOut) l r" |
   "chomp\<^sub>1\<^sub>e (Slice (SlInstance x \<iota>) l r) _ = Slice (SlInstance x \<iota>) l r"
-  subgoal by (simp add: eqvt_def chomp\<^sub>1\<^sub>e_graph_aux_def)
-  subgoal by (simp)
-  apply clarify
-  subgoal for P e y
-    apply (rule exp.strong_exhaust[of e P])
-    apply (auto)
-    subgoal by (rule packet.exhaust) (auto)
-    subgoal by (rule packet.exhaust) (auto)
-    apply (rule sliceable.exhaust)
-    apply (auto)
-    apply (rule packet.exhaust)
-    apply (auto)
-  done
-  apply (simp_all)
+lemma chomp\<^sub>1\<^sub>e_eqvt[eqvt]: "p \<bullet> chomp\<^sub>1\<^sub>e e y = chomp\<^sub>1\<^sub>e (p \<bullet> e) (p \<bullet> y)"
+  apply (induction e)
+  apply (auto)
+  subgoal for x pkt by (cases pkt) (auto)
+  subgoal for x pkt by (cases pkt) (auto)
+  subgoal for sl n m apply (cases sl) apply (auto) subgoal for x pkt by (cases pkt) (auto) done
 done
-nominal_termination (eqvt)
-  by lexicographic_order
 
 nominal_function chomp\<^sub>1\<^sub>\<phi> :: "formula \<Rightarrow> var \<Rightarrow> formula" where
   "chomp\<^sub>1\<^sub>\<phi> (Eq e\<^sub>1 e\<^sub>2) x = Eq (chomp\<^sub>1\<^sub>e e\<^sub>1 x) (chomp\<^sub>1\<^sub>e e\<^sub>2 x)" |
@@ -152,23 +142,19 @@ bits produced by heapRefBv.\<close>
 nominal_function flattenBvConcats :: "exp \<Rightarrow> exp" where
   "flattenBvConcats (Concat e\<^sub>1 e\<^sub>2) = (case (flattenBvConcats e\<^sub>1, flattenBvConcats e\<^sub>2) of
     (Bv bv\<^sub>1, Bv bv\<^sub>2) \<Rightarrow> Bv (bv\<^sub>1 @ bv\<^sub>2) | (_, _) \<Rightarrow> Concat e\<^sub>1 e\<^sub>2)"
+sorry
 
-nominal_function heapRef\<^sub>1\<^sub>e :: "exp \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> exp" where
+fun heapRef\<^sub>1\<^sub>e :: "exp \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> exp" where
   "heapRef\<^sub>1\<^sub>e (Bv bv) x \<iota> sz n = heapRefBv bv x \<iota> sz n" |
   "heapRef\<^sub>1\<^sub>e (Plus e\<^sub>1 e\<^sub>2) x \<iota> sz n = Plus (heapRef\<^sub>1\<^sub>e e\<^sub>1 x \<iota> sz n) (heapRef\<^sub>1\<^sub>e e\<^sub>2 x \<iota> sz n)" |
   "heapRef\<^sub>1\<^sub>e (Concat e\<^sub>1 e\<^sub>2) x \<iota> sz n = Concat (heapRef\<^sub>1\<^sub>e e\<^sub>1 x \<iota> sz n) (heapRef\<^sub>1\<^sub>e e\<^sub>2 x \<iota> sz n)" |
   "heapRef\<^sub>1\<^sub>e (Num n) _ _ _ _ = Num n" |
-  "heapRef\<^sub>1\<^sub>e (Packet x p) _ _ _ _ = Packet x p" |
-  "heapRef\<^sub>1\<^sub>e (Len x p) _ _ _ _ = Len x p" |
+  "heapRef\<^sub>1\<^sub>e (Packet y p) _ _ _ _ = Packet y p" |
+  "heapRef\<^sub>1\<^sub>e (Len y p) _ _ _ _ = Len y p" |
   "heapRef\<^sub>1\<^sub>e (Slice sl n m) _ _ _ _ = Slice sl n m"
-  subgoal by (simp add: eqvt_def heapRef\<^sub>1\<^sub>e_graph_aux_def)
-  subgoal by (simp)
-  apply (clarify)
-  subgoal by (rule exp.strong_exhaust) (auto)
-  apply (auto)
-done
-nominal_termination (eqvt)
-  by lexicographic_order
+lemma heapRef\<^sub>1\<^sub>e_eqvt[eqvt]:
+  "p \<bullet> heapRef\<^sub>1\<^sub>e e x \<iota> sz n = heapRef\<^sub>1\<^sub>e (p \<bullet> e) (p \<bullet> x) (p \<bullet> \<iota>) (p \<bullet> sz) (p \<bullet> n)"
+  by (induction e) (auto simp add: permute_pure)
 
 nominal_function heapRef\<^sub>1\<^sub>\<phi> :: "formula \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> formula" where
   "heapRef\<^sub>1\<^sub>\<phi> (Eq e\<^sub>1 e\<^sub>2) x \<iota> sz n = Eq (heapRef\<^sub>1\<^sub>e e\<^sub>1 x \<iota> sz n) (heapRef\<^sub>1\<^sub>e e\<^sub>2 x \<iota> sz n)" |
