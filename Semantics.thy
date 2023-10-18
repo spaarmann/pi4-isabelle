@@ -179,6 +179,37 @@ lemma exp_sem_eqvt[eqvt]: "p \<bullet> (\<lbrakk>e in \<E>\<rbrakk>\<^sub>e) = (
   apply (auto)
 done
 
+lemma exp_sem_Plus_Some1: "\<lbrakk>Plus e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = Some v \<Longrightarrow> (\<exists>v\<^sub>1. \<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e = Some v\<^sub>1)"
+proof (rule ccontr)
+  assume plus_some: "\<lbrakk>Plus e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = Some v"
+  assume "\<nexists>v\<^sub>1. (\<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e) = Some v\<^sub>1"
+  then have "\<lbrakk>Plus e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = None" by (auto)
+  then show "False" using plus_some by (auto)
+qed
+lemma exp_sem_Plus_Some2: "\<lbrakk>Plus e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = Some v \<Longrightarrow> (\<exists>v\<^sub>2. \<lbrakk>e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = Some v\<^sub>2)"
+proof (rule ccontr)
+  assume plus_some: "\<lbrakk>Plus e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = Some v"
+  assume "\<nexists>v\<^sub>2. (\<lbrakk>e\<^sub>2 in \<E>\<rbrakk>\<^sub>e) = Some v\<^sub>2"
+  then have "\<lbrakk>Plus e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = None" by (auto split: val.split split: option.split)
+  then show "False" using plus_some by (auto)
+qed
+
+lemma exp_sem_Concat_Some1: "\<lbrakk>Concat e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = Some v \<Longrightarrow> (\<exists>v\<^sub>1. \<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e = Some v\<^sub>1)"
+proof (rule ccontr)
+  assume plus_some: "\<lbrakk>Concat e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = Some v"
+  assume "\<nexists>v\<^sub>1. (\<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e) = Some v\<^sub>1"
+  then have "\<lbrakk>Concat e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = None" by (auto)
+  then show "False" using plus_some by (auto)
+qed
+lemma exp_sem_Concat_Some2: "\<lbrakk>Concat e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = Some v \<Longrightarrow> (\<exists>v\<^sub>2. \<lbrakk>e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = Some v\<^sub>2)"
+proof (rule ccontr)
+  assume plus_some: "\<lbrakk>Concat e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = Some v"
+  assume "\<nexists>v\<^sub>2. (\<lbrakk>e\<^sub>2 in \<E>\<rbrakk>\<^sub>e) = Some v\<^sub>2"
+  then have "\<lbrakk>Concat e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = None" by (auto split: val.split split: option.split)
+  then show "False" using plus_some by (auto)
+qed
+
+
 text\<open>Unlike for the small-step semantics, semantic expression equality and comparison is explicitly
 defined to be False when the semantics of either operand are undefined. (See section 3.3, p. 9)\<close>
 nominal_function formula_sem :: "formula \<Rightarrow> env \<Rightarrow> bool option" ("\<lbrakk>_ in _\<rbrakk>\<^sub>f" [50,60] 50)

@@ -139,13 +139,30 @@ nominal_termination (eqvt)
 text\<open>It is useful to have heapRef not change bit vectors that contain no BitVars at all (and the
 paper claims so despite mirroring the heapRefBv definition above), so we flatten Concats of single
 bits produced by heapRefBv.\<close>
-nominal_function flattenBvConcats :: "exp \<Rightarrow> exp" where
+fun flattenBvConcats :: "exp \<Rightarrow> exp" where
   "flattenBvConcats (Concat e\<^sub>1 e\<^sub>2) = (case (flattenBvConcats e\<^sub>1, flattenBvConcats e\<^sub>2) of
-    (Bv bv\<^sub>1, Bv bv\<^sub>2) \<Rightarrow> Bv (bv\<^sub>1 @ bv\<^sub>2) | (_, _) \<Rightarrow> Concat e\<^sub>1 e\<^sub>2)"
-sorry
+    (Bv bv\<^sub>1, Bv bv\<^sub>2) \<Rightarrow> Bv (bv\<^sub>1 @ bv\<^sub>2) | (_, _) \<Rightarrow> Concat e\<^sub>1 e\<^sub>2)" |
+  "flattenBvConcats e = e"
+lemma flattenBvConcats_eqvt[eqvt]: "p \<bullet> flattenBvConcats e = flattenBvConcats (p \<bullet> e)"
+  apply (induction e rule: flattenBvConcats.induct)
+  apply (auto)
+  apply (auto split: exp.split)
+done
+
+lemma heapRefBvNop:
+  assumes "BitVar \<notin> set bv"
+  shows "flattenBvConcats (heapRefBv bv x \<iota> sz n) = Bv bv"
+proof -
+  have "BitVar \<notin> set bv \<Longrightarrow> ?thesis" proof (induction bv)
+    case Nil show ?case by (auto)
+  next
+    case (Cons a bv) then show ?case by (auto)
+  qed
+  then show ?thesis using assms by (auto)
+qed
 
 fun heapRef\<^sub>1\<^sub>e :: "exp \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> exp" where
-  "heapRef\<^sub>1\<^sub>e (Bv bv) x \<iota> sz n = heapRefBv bv x \<iota> sz n" |
+  "heapRef\<^sub>1\<^sub>e (Bv bv) x \<iota> sz n = flattenBvConcats (heapRefBv bv x \<iota> sz n)" |
   "heapRef\<^sub>1\<^sub>e (Plus e\<^sub>1 e\<^sub>2) x \<iota> sz n = Plus (heapRef\<^sub>1\<^sub>e e\<^sub>1 x \<iota> sz n) (heapRef\<^sub>1\<^sub>e e\<^sub>2 x \<iota> sz n)" |
   "heapRef\<^sub>1\<^sub>e (Concat e\<^sub>1 e\<^sub>2) x \<iota> sz n = Concat (heapRef\<^sub>1\<^sub>e e\<^sub>1 x \<iota> sz n) (heapRef\<^sub>1\<^sub>e e\<^sub>2 x \<iota> sz n)" |
   "heapRef\<^sub>1\<^sub>e (Num n) _ _ _ _ = Num n" |

@@ -17,28 +17,57 @@ inductive unaffected_by_chomp\<^sub>e :: "exp \<Rightarrow> bool" where
 declare unaffected_by_chomp\<^sub>e.intros[simp]
 declare unaffected_by_chomp\<^sub>e.intros[intro]
 
-lemma chomp_unaffected\<^sub>e: "unaffected_by_chomp\<^sub>e e \<Longrightarrow> (e = chomp\<^sub>1\<^sub>e e x)"
-  sorry
-
 text\<open>We use the first semantic assumption to assert that e doesn't already contain any BitVars.
 It's a little stronger than what's needed for this lemma, but that's fine.\<close>
 lemma ref_chomp_unaffected\<^sub>e:
-  assumes sem: "\<lbrakk>e in \<E>\<rbrakk>\<^sub>e = Some v" and "unaffected_by_chomp\<^sub>e e"
+  assumes "\<lbrakk>e in \<E>\<rbrakk>\<^sub>e = Some v" and "unaffected_by_chomp\<^sub>e e"
   shows "e = heapRef\<^sub>1\<^sub>e (chomp\<^sub>1\<^sub>e e y) x \<iota> sz n"
 proof -
   let ?ref_chomp = "\<lambda>e. heapRef\<^sub>1\<^sub>e (chomp\<^sub>1\<^sub>e e y) x \<iota> sz n"
-  have "\<lbrakk>e in \<E>\<rbrakk>\<^sub>e = Some v \<Longrightarrow> ?thesis" proof (nominal_induct e rule: exp.strong_induct)
+  have "(\<exists>v. \<lbrakk>e in \<E>\<rbrakk>\<^sub>e = Some v) \<Longrightarrow> unaffected_by_chomp\<^sub>e e \<Longrightarrow> ?thesis" proof (induction e)
     case (Num n)
-      show ?case by (auto)
+    show ?case by (auto)
+  next
     case (Bv bv)
-      then have "BitVar \<notin> set bv" by (auto simp add: bv_to_bools_some)
-      have "chomp\<^sub>1\<^sub>e (Bv bv) y = Bv bv" by (auto)
-      show ?case by (auto)
+    then have "BitVar \<notin> set bv" by (auto simp add: bv_to_bools_some)
+    then have "?ref_chomp (Bv bv) = Bv bv" by (auto simp add: heapRefBvNop)
+    then show ?case by (auto)
+  next
+    case (Plus e\<^sub>1 e\<^sub>2)
+    moreover have "(\<exists>v. \<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e = Some v)" using Plus by (auto simp add: exp_sem_Plus_Some1)
+    moreover have "(\<exists>v. \<lbrakk>e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = Some v)" using Plus by (auto simp add: exp_sem_Plus_Some2)
+    moreover from Plus.prems(2) have "unaffected_by_chomp\<^sub>e e\<^sub>1" by (cases) (auto)
+    moreover from Plus.prems(2) have "unaffected_by_chomp\<^sub>e e\<^sub>2" by (cases) (auto)
+    ultimately show ?case by (auto)
+  next
+    case (Concat e\<^sub>1 e\<^sub>2)
+    moreover have "(\<exists>v. \<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e = Some v)" using Concat by (auto simp add: exp_sem_Concat_Some1)
+    moreover have "(\<exists>v. \<lbrakk>e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = Some v)" using Concat by (auto simp add: exp_sem_Concat_Some2)
+    moreover from Concat.prems(2) have "unaffected_by_chomp\<^sub>e e\<^sub>1" by (cases) (auto)
+    moreover from Concat.prems(2) have "unaffected_by_chomp\<^sub>e e\<^sub>2" by (cases) (auto)
+    ultimately show ?case by (auto)
+  next
+    case (Packet z pkt)
+    from Packet.prems(2) have "pkt = PktOut" by (cases) (auto)
+    then show ?case by (auto)
+  next
+    case (Len z pkt)
+    from Len.prems(2) have "pkt = PktOut" by (cases) (auto)
+    then show ?case by (auto)
+  next
+    case (Slice sl n m)
+    show ?case proof (cases sl)
+      case (SlPacket z pkt)
+      from Slice.prems(2) and SlPacket have "pkt = PktOut" by (cases) (auto)
+      then show "Slice sl n m = ?ref_chomp (Slice sl n m)" using Slice and SlPacket by (auto)
+    next
+      case (SlInstance z \<iota>)
+      then show "Slice sl n m = ?ref_chomp (Slice sl n m)" using Slice by (auto)
+    qed
   qed
-  then show ?thesis using sem by auto
+  then show ?thesis using assms by auto
 qed
 
-thm ref_chomp_unaffected\<^sub>e
 
 subsection\<open>Main Correctness Results\<close>
 
@@ -56,19 +85,18 @@ lemma semantic_chomp_exp:
   shows "\<lbrakk>e in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = (\<lbrakk>heapRef\<^sub>1\<^sub>e (chomp\<^sub>1\<^sub>e e y) x \<iota> (header_length \<eta>) 1 in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e)"
 proof -
   let ?ref_chomp = "\<lambda>e. heapRef\<^sub>1\<^sub>e (chomp\<^sub>1\<^sub>e e y) x \<iota> (header_length \<eta>) 1"
-  show ?thesis proof (nominal_induct e rule: exp.strong_induct)
-
-  case (Num n)
-  have "unaffected_by_chomp\<^sub>e (Num n)" by (auto)
-  then show ?case by (auto simp add: chomp_unaffected\<^sub>e)
-  (*then have "Num n = ?ref_chomp (Num n)" by (auto simp add: chomp_unaffected\<^sub>e)
-  then show ?case by (auto)*)
-next
-  case (Bv bv)
-  then have "Bv bv = ?ref_chomp (Bv bv)" sorry
-  then show ?case by (auto)
-next
-  case (Plus e\<^sub>1 e\<^sub>2)
+  show ?thesis
+  proof (induction e)
+    case (Num n)
+    then show ?case by (auto)
+  next
+    case (Bv bv)
+    (* TODO: Want to show the Some case now with all the infrastructure I built up, but the None
+       case is not actually necessarily true I think. Is the paper wrong here? *)
+    then have "Bv bv = ?ref_chomp (Bv bv)"
+    then show ?case by (auto)
+  next
+    case (Plus e\<^sub>1 e\<^sub>2)
 
 qed
 qed
