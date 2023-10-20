@@ -99,6 +99,16 @@ definition env_update :: "env \<Rightarrow> var \<Rightarrow> heap \<Rightarrow>
 where
   "\<E>[x \<rightarrow> h] = \<E>\<lparr>heaps := AList.update x h (heaps \<E>)\<rparr>"
 
+lemma env_update_other: "x \<noteq> y \<Longrightarrow> map_of (heaps \<E>) x = map_of (heaps \<E>[y \<rightarrow> h']) x"
+(*  by (auto simp add: env_update_def AList.update_def update_conv) *)
+proof (induction "heaps \<E>")
+  case Nil
+  then have "map_of (heaps \<E>) x = None" and "map_of (heaps \<E>[y \<rightarrow> h']) x = None"
+    by (auto simp add: env_update_def)
+  then show ?case by (auto)
+next
+  case (Cons h hs)
+  then have "map_of hs x = map_of (AList.update y h' hs) x" by (auto simp add: update_conv)
 
 section\<open>Expressions and Formulas\<close>
 

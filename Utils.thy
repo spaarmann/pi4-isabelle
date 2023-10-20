@@ -116,6 +116,15 @@ lemma env_lookup_packet_eqvt[eqvt]:
   "p \<bullet> env_lookup_packet \<E> x pkt = env_lookup_packet (p \<bullet> \<E>) (p \<bullet> x) (p \<bullet> pkt)"
   by (simp add: env_lookup_packet_def permute_packet_def)
 
+lemma env_lookup_packet_update_other:
+  "x \<noteq> y \<Longrightarrow> env_lookup_packet \<E> x pkt = env_lookup_packet \<E>[y \<rightarrow> h] x pkt"
+proof -
+  have "x \<noteq> y \<Longrightarrow> map_of (heaps \<E>) x = map_of (heaps \<E>[y \<rightarrow> h]) x" sorry
+  moreover assume "x \<noteq> y"
+  ultimately show ?thesis by (auto simp add: env_lookup_packet_def)
+qed
+  
+
 definition env_lookup_instance :: "env \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> bv option" where
   "env_lookup_instance \<E> x \<iota> = Option.bind (map_of (heaps \<E>) x) (\<lambda>h. heap_lookup_instance h \<iota>)"
 lemma env_lookup_instance_eqvt[eqvt]:
