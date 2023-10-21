@@ -123,8 +123,10 @@ nominal_termination (eqvt)
 text\<open>We outline the recursive bitvector case for heapRef1e because lexicographic_order is not able
 to prove termination otherwise, since we would have to construct a new Bv exp in the recursive call.\<close>
 nominal_function heapRefBv :: "bv \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> exp" where
+  (* The slice upper bound is originally "sz - n + 1" but swapping the order avoids the annoying
+     nat edge case. *)
   "heapRefBv (b#bv) x \<iota> sz n = Concat (if b = BitVar
-    then Slice (SlInstance x \<iota>) (sz - n) (sz - n + 1)
+    then Slice (SlInstance x \<iota>) (sz - n) (sz + 1 - n)
     else Bv [b]) (heapRefBv bv x \<iota> sz n)" |
   "heapRefBv [] _ _ _ _ = Bv []"
   subgoal by (simp add: eqvt_def heapRefBv_graph_aux_def)
@@ -141,7 +143,7 @@ paper claims so despite mirroring the heapRefBv definition above), so we flatten
 bits produced by heapRefBv.\<close>
 fun flattenBvConcats :: "exp \<Rightarrow> exp" where
   "flattenBvConcats (Concat e\<^sub>1 e\<^sub>2) = (case (flattenBvConcats e\<^sub>1, flattenBvConcats e\<^sub>2) of
-    (Bv bv\<^sub>1, Bv bv\<^sub>2) \<Rightarrow> Bv (bv\<^sub>1 @ bv\<^sub>2) | (_, _) \<Rightarrow> Concat e\<^sub>1 e\<^sub>2)" |
+    (Bv bv\<^sub>1, Bv bv\<^sub>2) \<Rightarrow> Bv (bv\<^sub>1 @ bv\<^sub>2) | (e\<^sub>1', e\<^sub>2') \<Rightarrow> Concat e\<^sub>1' e\<^sub>2')" |
   "flattenBvConcats e = e"
 lemma flattenBvConcats_eqvt[eqvt]: "p \<bullet> flattenBvConcats e = flattenBvConcats (p \<bullet> e)"
   apply (induction e rule: flattenBvConcats.induct)

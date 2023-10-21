@@ -32,6 +32,7 @@ fun bool_from_bit :: "bit \<Rightarrow> bool option" where
 
 definition bv_to_bools :: "bv \<Rightarrow> bool list option" where
   "bv_to_bools bv = those (map bool_from_bit bv)"
+declare bv_to_bools_def[simp]
 
 datatype packet = PktIn | PktOut
 instantiation packet :: pure begin
@@ -99,16 +100,13 @@ definition env_update :: "env \<Rightarrow> var \<Rightarrow> heap \<Rightarrow>
 where
   "\<E>[x \<rightarrow> h] = \<E>\<lparr>heaps := AList.update x h (heaps \<E>)\<rparr>"
 
+lemma alist_update_other: "x \<noteq> y \<Longrightarrow> map_of al x = map_of (AList.update y v al) x"
+  by (auto simp add: update_conv)
+
 lemma env_update_other: "x \<noteq> y \<Longrightarrow> map_of (heaps \<E>) x = map_of (heaps \<E>[y \<rightarrow> h']) x"
-(*  by (auto simp add: env_update_def AList.update_def update_conv) *)
-proof (induction "heaps \<E>")
-  case Nil
-  then have "map_of (heaps \<E>) x = None" and "map_of (heaps \<E>[y \<rightarrow> h']) x = None"
-    by (auto simp add: env_update_def)
-  then show ?case by (auto)
-next
-  case (Cons h hs)
-  then have "map_of hs x = map_of (AList.update y h' hs) x" by (auto simp add: update_conv)
+  by (auto simp add: env_update_def alist_update_other)
+lemma env_update_same[simp]: "map_of (heaps \<E>[x \<rightarrow> h]) x = Some h"
+  by (auto simp add: env_update_def update_conv)
 
 section\<open>Expressions and Formulas\<close>
 

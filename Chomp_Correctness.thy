@@ -68,6 +68,54 @@ proof -
   then show ?thesis using assms by auto
 qed
 
+lemma unchanged_packet_in_chomped_env:
+  assumes h'_def: "h' = chomp\<^sub>S h 1"
+      and \<E>'_def: "\<E>' = \<E>[x \<rightarrow> empty_heap\<lparr> heap_headers := empty_headers(\<iota> \<mapsto> v) \<rparr>]"
+      and x_in_\<E>: "x \<in> env_dom \<E>
+        \<Longrightarrow> (env_lookup_packet \<E> x PktIn = Some [] \<and> env_lookup_packet \<E> x PktOut = Some [])"
+      and x_not_in_\<E>: "x \<notin> env_dom \<E> \<Longrightarrow> atom x \<sharp> (Packet z pkt)"
+      and "z \<noteq> y"
+  shows "\<lbrakk>Packet z pkt in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = (\<lbrakk>Packet z pkt in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e)"
+proof -
+  from \<open>z \<noteq> y\<close> have "\<lbrakk>Packet z pkt in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = (\<lbrakk>Packet z pkt in \<E>\<rbrakk>\<^sub>e)"
+    by (auto simp add: env_lookup_packet_update_other)
+  moreover from \<open>z \<noteq> y\<close> have "\<lbrakk>Packet z pkt in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e = (\<lbrakk>Packet z pkt in \<E>'\<rbrakk>\<^sub>e)"
+    by (auto simp add: env_lookup_packet_update_other)
+  moreover have "\<lbrakk>Packet z pkt in \<E>\<rbrakk>\<^sub>e = (\<lbrakk>Packet z pkt in \<E>'\<rbrakk>\<^sub>e)" (is ?P)
+    proof (cases "z = x")
+      assume "z \<noteq> x"
+      then show "?P" using \<open>z \<noteq> y\<close> and \<E>'_def by (auto simp add: env_lookup_packet_update_other)
+    next
+      assume "z = x"
+      then show "?P" proof (cases "x \<in> env_dom \<E>")
+        assume "x \<in> env_dom \<E>"
+        then have "\<lbrakk>Packet z pkt in \<E>\<rbrakk>\<^sub>e = Some (VBv [])" using \<open>z = x\<close> and x_in_\<E>
+          by (cases pkt) (auto)
+        moreover have "\<lbrakk>Packet z pkt in \<E>'\<rbrakk>\<^sub>e = Some (VBv [])" using \<open>z = x\<close> and \<E>'_def
+          by (cases pkt) (auto simp add: env_lookup_packet_def)
+        ultimately show "?P" by (auto)
+      next
+        assume "x \<notin> env_dom \<E>"
+        then have "atom x \<sharp> (Packet z pkt)" using assms by (auto)
+        then have "False" using \<open>z = x\<close> by (metis fresh_at_base(2) fresh_def supp_Packet)
+        then show "?P" using \<open>z = x\<close> by auto
+      qed
+    qed
+  ultimately show ?thesis by (auto)
+qed
+
+find_theorems "last (?a @ ?b) = last ?b"
+
+lemma exp_sem_concat: "\<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e = map_option VBv (bv_to_bools bv\<^sub>1)
+      \<Longrightarrow> \<lbrakk>e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = map_option VBv (bv_to_bools bv\<^sub>2)
+      \<Longrightarrow> \<lbrakk>Concat e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = map_option VBv (bv_to_bools (bv\<^sub>1 @ bv\<^sub>2))"
+  by (auto split: option.split)
+
+lemma exp_sem_concat: "\<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e = Some (VBv bv\<^sub>1)
+      \<Longrightarrow> \<lbrakk>e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = Some (VBv bv\<^sub>2)
+      \<Longrightarrow> \<lbrakk>Concat e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = Some (VBv (bv\<^sub>1 @ bv\<^sub>2))"
+  by (auto)
+    
 
 subsection\<open>Main Correctness Results\<close>
 
@@ -78,19 +126,22 @@ subsection\<open>Main Correctness Results\<close>
 lemma semantic_chomp_exp:
   fixes e::exp and h::heap and h'::heap and \<E>::env and \<E>'::env and x::var and \<iota>::instanc
     and HT :: header_table
-  assumes "h' = chomp\<^sub>S h 1"
+  assumes h'_def: "h' = chomp\<^sub>S h 1"
       and \<E>'_def: "\<E>' = \<E>[x \<rightarrow> empty_heap\<lparr> heap_headers := empty_headers(\<iota> \<mapsto> v) \<rparr>]"
-      and "x \<in> env_dom \<E> \<Longrightarrow> ((Some v = (map_option (\<lambda>bv. bv @ take 1 (heap_pkt_in h)) (env_lookup_instance \<E> x \<iota>)))
-                            \<and> env_lookup_packet \<E> x PktIn = Some []
-                            \<and> env_lookup_packet \<E> x PktOut = Some [])"
-      and "x \<notin> env_dom \<E> \<Longrightarrow> (v = take 1 (heap_pkt_in h)) \<and> atom x \<sharp> e"
+      and x_in_\<E>: "x \<in> env_dom \<E>
+        \<Longrightarrow> ((Some v = (map_option (\<lambda>bv. bv @ take 1 (heap_pkt_in h)) (env_lookup_instance \<E> x \<iota>)))
+            \<and> env_lookup_packet \<E> x PktIn = Some []
+            \<and> env_lookup_packet \<E> x PktOut = Some [])"
+      and x_not_in_\<E>: "x \<notin> env_dom \<E> \<Longrightarrow> (v = take 1 (heap_pkt_in h)) \<and> atom x \<sharp> e"
+      and has_pkt_in: "length (heap_pkt_in h) \<ge> 1" (* Is required I think, implied in the paper by h(pktIn)[0:1] being well-defined *)
       and "map_of HT \<iota> = Some \<eta>"
       and "\<lbrakk>e in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = Some res"
 (* TODO: y just appears in the lemma. It probably needs freshness assumptions? *)
   shows "(\<lbrakk>heapRef\<^sub>1\<^sub>e (chomp\<^sub>1\<^sub>e e y) x \<iota> (header_length \<eta>) 1 in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e) = (\<lbrakk>e in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e)"
 proof -
   let ?ref_chomp = "\<lambda>e. heapRef\<^sub>1\<^sub>e (chomp\<^sub>1\<^sub>e e y) x \<iota> (header_length \<eta>) 1"
-  have "(\<exists>res. \<lbrakk>e in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = Some res) \<Longrightarrow> ?thesis"
+  let ?sz = "header_length \<eta>"
+  have "(\<exists>res. \<lbrakk>e in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = Some res) \<Longrightarrow> (x \<notin> env_dom \<E> \<longrightarrow> atom x \<sharp> e)  \<Longrightarrow> ?thesis"
   proof (induction e)
     case (Num n)
     then show ?case by (auto)
@@ -107,7 +158,7 @@ proof -
     moreover have "\<exists>v\<^sub>2. \<lbrakk>e\<^sub>2 in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = Some v\<^sub>2" using Plus.prems
       by (auto simp add: exp_sem_Plus_Some2)
     ultimately have "\<lbrakk>?ref_chomp (Plus e\<^sub>1 e\<^sub>2) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e = (\<lbrakk>Plus e\<^sub>1 e\<^sub>2 in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e)"
-      using Plus by (auto)
+      using Plus by (auto simp add: fresh_def supp_Plus)
     then show ?case by (auto)
   next
     case (Concat e\<^sub>1 e\<^sub>2)
@@ -116,26 +167,52 @@ proof -
     moreover have "\<exists>v\<^sub>2. \<lbrakk>e\<^sub>2 in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = Some v\<^sub>2" using Concat.prems
       by (auto simp add: exp_sem_Concat_Some2)
     ultimately have "\<lbrakk>?ref_chomp (Concat e\<^sub>1 e\<^sub>2) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e = (\<lbrakk>Concat e\<^sub>1 e\<^sub>2 in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e)"
-      using Concat by (auto)
+      using Concat by (auto simp add: fresh_def supp_Concat)
     then show ?case by (auto)
   next
     case (Packet z pkt)
-    show ?case proof (cases)
-      assume "pkt = PktOut"
-      then have 0: "?ref_chomp (Packet z pkt) = Packet z pkt" by (auto)
-      show ?case proof (cases)
-        assume "z \<noteq> y"
-        then have "\<lbrakk>Packet z PktOut in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = (\<lbrakk>Packet z PktOut in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e)"
-        proof (cases)
-          assume "z \<noteq> x"
-          then show "\<lbrakk>Packet z PktOut in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = (\<lbrakk>Packet z PktOut in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e)"
-            using \<open>z \<noteq> y\<close> and \<E>'_def by auto
-        qed
-        then show ?case using 0 by (auto)
-      qed
+    show ?case proof (cases "z = y")
+      assume "z \<noteq> y"
+      then have "?ref_chomp (Packet z pkt) = Packet z pkt" by (cases pkt) (auto)
+      then show ?case using Packet and assms and \<open>z \<noteq> y\<close> by (metis unchanged_packet_in_chomped_env)
     next
-      assume "pkt \<noteq> PktOut"
-      then show ?case sorry
+      assume "z = y"
+      show ?case proof (cases pkt)
+        assume "pkt = PktIn"
+        have "chomp\<^sub>1\<^sub>e (Packet y PktIn) y = Concat (Bv [BitVar]) (Packet y PktIn)" by (auto)
+        then have "?ref_chomp (Packet y PktIn)
+          = Concat (Concat (Slice (SlInstance x \<iota>) (?sz - 1) ?sz) (Bv [])) (Packet y PktIn)"
+          by (auto)
+        moreover have "\<lbrakk>Concat (Slice (SlInstance x \<iota>) (?sz - 1) ?sz) (Bv []) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
+                        = map_option VBv (bv_to_bools [last v])" sorry
+        moreover have "\<lbrakk>Packet y PktIn in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e = map_option VBv (bv_to_bools (heap_pkt_in h'))"
+          sorry
+        ultimately have "\<lbrakk>?ref_chomp (Packet y PktIn) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
+          = map_option VBv (bv_to_bools ([last v] @ heap_pkt_in h'))" using exp_sem_concat by presburger
+        moreover have "last v = hd (heap_pkt_in h)" using x_in_\<E> and x_not_in_\<E> proof (cases "x \<in> env_dom \<E>")
+          assume "x \<in> env_dom \<E>"
+          then have "\<exists>b. v = b @ take 1 (heap_pkt_in h)" using x_in_\<E>
+            by (metis None_eq_map_option_iff option.discI option.map_sel option.sel)
+          then show "last v = hd (heap_pkt_in h)" using has_pkt_in
+            by (metis One_nat_def hd_conv_nth last_appendR last_snoc length_greater_0_conv
+                      order.strict_trans2 take_Suc_conv_app_nth take_eq_Nil2 zero_less_one zero_neq_one)
+        next
+          assume "x \<notin> env_dom \<E>"
+          then show "last v = hd (heap_pkt_in h)" using x_not_in_\<E>
+            by (auto) (metis hd_Nil_eq_last last_ConsL take0 take_Nil take_Suc)
+        qed
+        ultimately have "\<lbrakk>?ref_chomp (Packet y PktIn) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
+          = map_option VBv (bv_to_bools (hd (heap_pkt_in h) # heap_pkt_in h'))" by (auto)
+        
+      next
+        assume "pkt = PktOut"
+        then have ref_chomp_nop: "?ref_chomp (Packet z pkt) = Packet z pkt" by (auto)
+        have "env_lookup_packet \<E>[y \<rightarrow> h] y PktOut = Some (heap_pkt_out h)"
+          by (auto simp add: env_lookup_packet_def)
+        moreover have "env_lookup_packet \<E>'[y \<rightarrow> h'] y PktOut = Some (heap_pkt_out h)"
+          using h'_def by (auto simp add: env_lookup_packet_def chomp\<^sub>S_def)
+        ultimately show ?case using ref_chomp_nop and \<open>z = y\<close> and \<open>pkt = PktOut\<close> by (auto)
+      qed
     qed
   next
     case (Len z pkt)
