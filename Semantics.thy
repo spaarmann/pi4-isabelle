@@ -160,16 +160,16 @@ subsection\<open>Denotational semantics\<close>
 fun exp_sem :: "exp \<Rightarrow> env \<Rightarrow> val option" ("\<lbrakk>_ in _\<rbrakk>\<^sub>e" [50,60] 50)
 where
   "\<lbrakk>Num n in \<E>\<rbrakk>\<^sub>e = Some (VNum n)" |
-  "\<lbrakk>Bv bv in \<E>\<rbrakk>\<^sub>e = map_option VBv (bv_to_bools bv)" |
+  "\<lbrakk>Bv bv in \<E>\<rbrakk>\<^sub>e = bv_to_val bv" |
   "\<lbrakk>Plus e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = (case (\<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e, \<lbrakk>e\<^sub>2 in \<E>\<rbrakk>\<^sub>e) of
     (Some (VNum n\<^sub>1), Some (VNum n\<^sub>2)) \<Rightarrow> Some (VNum (n\<^sub>1 + n\<^sub>2)) | _ \<Rightarrow> None)" |
   "\<lbrakk>Concat e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = (case (\<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e, \<lbrakk>e\<^sub>2 in \<E>\<rbrakk>\<^sub>e) of
     (Some (VBv bv\<^sub>1), Some (VBv bv\<^sub>2)) \<Rightarrow> Some (VBv (bv\<^sub>1 @ bv\<^sub>2)) | _ \<Rightarrow> None)" |
-  "\<lbrakk>Packet x p in \<E>\<rbrakk>\<^sub>e = map_option VBv (Option.bind (env_lookup_packet \<E> x p) bv_to_bools)" |
+  "\<lbrakk>Packet x p in \<E>\<rbrakk>\<^sub>e = map_option VBv (env_lookup_packet \<E> x p)" |
   "\<lbrakk>Len x p in \<E>\<rbrakk>\<^sub>e = map_option (\<lambda>bv. VNum (length bv)) (env_lookup_packet \<E> x p)" |
   "\<lbrakk>Slice sl n m in \<E>\<rbrakk>\<^sub>e = Option.bind (env_lookup_sliceable \<E> sl)
     (\<lambda>bv. if 0 \<le> n \<and> n < m \<and> m \<le> length bv + 1
-          then map_option VBv (bv_to_bools (slice bv n m)) else None)"
+          then Some (VBv (slice bv n m)) else None)"
 lemma exp_sem_eqvt[eqvt]: "p \<bullet> (\<lbrakk>e in \<E>\<rbrakk>\<^sub>e) = (\<lbrakk>p \<bullet> e in p \<bullet> \<E>\<rbrakk>\<^sub>e)"
   apply (induction e)
   subgoal by (auto)
@@ -208,6 +208,9 @@ proof (rule ccontr)
   then have "\<lbrakk>Concat e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = None" by (auto split: val.split split: option.split)
   then show "False" using plus_some by (auto)
 qed
+
+lemma exp_sem_no_BitVar: "\<lbrakk>Bv bv in \<E>\<rbrakk>\<^sub>e = Some v \<Longrightarrow> BitVar \<notin> set bv"
+  by (auto simp add: bv_to_val_def)
 
 
 text\<open>Unlike for the small-step semantics, semantic expression equality and comparison is explicitly

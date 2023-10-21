@@ -29,7 +29,7 @@ proof -
     show ?case by (auto)
   next
     case (Bv bv)
-    then have "BitVar \<notin> set bv" by (auto simp add: bv_to_bools_some)
+    then have "BitVar \<notin> set bv" by (auto simp add: exp_sem_no_BitVar)
     then have "?ref_chomp (Bv bv) = Bv bv" by (auto simp add: heapRefBvNop)
     then show ?case by (auto)
   next
@@ -104,18 +104,6 @@ proof -
   ultimately show ?thesis by (auto)
 qed
 
-find_theorems "last (?a @ ?b) = last ?b"
-
-lemma exp_sem_concat: "\<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e = map_option VBv (bv_to_bools bv\<^sub>1)
-      \<Longrightarrow> \<lbrakk>e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = map_option VBv (bv_to_bools bv\<^sub>2)
-      \<Longrightarrow> \<lbrakk>Concat e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = map_option VBv (bv_to_bools (bv\<^sub>1 @ bv\<^sub>2))"
-  by (auto split: option.split)
-
-lemma exp_sem_concat: "\<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e = Some (VBv bv\<^sub>1)
-      \<Longrightarrow> \<lbrakk>e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = Some (VBv bv\<^sub>2)
-      \<Longrightarrow> \<lbrakk>Concat e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>e = Some (VBv (bv\<^sub>1 @ bv\<^sub>2))"
-  by (auto)
-    
 
 subsection\<open>Main Correctness Results\<close>
 
@@ -183,12 +171,17 @@ proof -
         then have "?ref_chomp (Packet y PktIn)
           = Concat (Concat (Slice (SlInstance x \<iota>) (?sz - 1) ?sz) (Bv [])) (Packet y PktIn)"
           by (auto)
-        moreover have "\<lbrakk>Concat (Slice (SlInstance x \<iota>) (?sz - 1) ?sz) (Bv []) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
-                        = map_option VBv (bv_to_bools [last v])" sorry
-        moreover have "\<lbrakk>Packet y PktIn in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e = map_option VBv (bv_to_bools (heap_pkt_in h'))"
-          sorry
+        have "env_lookup_instance (\<E>'[y \<rightarrow> h']) x \<iota> = Some v" using \<E>'_def
+          by (auto simp add: env_lookup_instance_def env_update_def update_conv)
+        have "header_length \<eta> \<le> Suc (length v)" sorry
+        moreover then have "\<lbrakk>Concat (Slice (SlInstance x \<iota>) (?sz - 1) ?sz) (Bv []) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
+                        = Some (VBv (slice v (?sz - 1) ?sz))" using \<E>'_def
+          by (auto simp add: env_lookup_instance_def)
+(* = Some (VBv [last v])" by (auto) *)
+        moreover have "\<lbrakk>Packet y PktIn in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e = Some (VBv (heap_pkt_in h'))"
+          by (auto simp add: env_lookup_packet_def)
         ultimately have "\<lbrakk>?ref_chomp (Packet y PktIn) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
-          = map_option VBv (bv_to_bools ([last v] @ heap_pkt_in h'))" using exp_sem_concat by presburger
+          = Some (VBv ([last v] @ heap_pkt_in h'))" by (auto)
         moreover have "last v = hd (heap_pkt_in h)" using x_in_\<E> and x_not_in_\<E> proof (cases "x \<in> env_dom \<E>")
           assume "x \<in> env_dom \<E>"
           then have "\<exists>b. v = b @ take 1 (heap_pkt_in h)" using x_in_\<E>
@@ -202,8 +195,7 @@ proof -
             by (auto) (metis hd_Nil_eq_last last_ConsL take0 take_Nil take_Suc)
         qed
         ultimately have "\<lbrakk>?ref_chomp (Packet y PktIn) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
-          = map_option VBv (bv_to_bools (hd (heap_pkt_in h) # heap_pkt_in h'))" by (auto)
-        
+          = Some (VBv (hd (heap_pkt_in h) # heap_pkt_in h'))" by (auto)
       next
         assume "pkt = PktOut"
         then have ref_chomp_nop: "?ref_chomp (Packet z pkt) = Packet z pkt" by (auto)

@@ -103,8 +103,8 @@ where
 lemma alist_update_other: "x \<noteq> y \<Longrightarrow> map_of al x = map_of (AList.update y v al) x"
   by (auto simp add: update_conv)
 
-lemma env_update_other: "x \<noteq> y \<Longrightarrow> map_of (heaps \<E>) x = map_of (heaps \<E>[y \<rightarrow> h']) x"
-  by (auto simp add: env_update_def alist_update_other)
+lemma env_update_other[simp]: "x \<noteq> y \<Longrightarrow> map_of (heaps \<E>[y \<rightarrow> h']) x = map_of (heaps \<E>) x"
+  by (auto simp add: env_update_def simp flip: alist_update_other)
 lemma env_update_same[simp]: "map_of (heaps \<E>[x \<rightarrow> h]) x = Some h"
   by (auto simp add: env_update_def update_conv)
 
@@ -137,12 +137,15 @@ lemma SlPacket_eqvt[eqvt]: "p \<bullet> (SlPacket x pkt) = SlPacket (p \<bullet>
 lemma SlInstance_eqvt[eqvt]: "p \<bullet> (SlInstance x \<iota>) = SlInstance (p \<bullet> x) (p \<bullet> \<iota>)"
   by (auto simp add: permute_pure)
 
-datatype val = VNum nat | VBv "bool list"
+datatype val = VNum nat | VBv bv
 instantiation val :: pure begin
   definition permute_val :: "perm \<Rightarrow> val \<Rightarrow> val" where
     "permute_val _ v = v"
   instance by standard (auto simp add: permute_val_def)
 end
+
+definition bv_to_val :: "bv \<Rightarrow> val option" where
+  "bv_to_val bv = (if BitVar \<in> set bv then None else Some (VBv bv))"
 
 datatype exp =
   Num nat | Bv bv |
