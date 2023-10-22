@@ -3,6 +3,10 @@ theory Utils imports Syntax begin
 definition slice :: "'a list \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> 'a list" where
   "slice xs n m = take (m - n) (drop n xs)"
 
+lemma slice_last: "length xs > 0 \<Longrightarrow> slice xs (length xs - 1) (length xs) = [last xs]" 
+  by (auto simp add: slice_def)
+     (metis One_nat_def append_butlast_last_id append_eq_conv_conj length_butlast)
+
 text\<open>Replaces [n:m) in the first input list with the second list.\<close>
 definition splice :: "'a list \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> 'a list \<Rightarrow> 'a list" where
   "splice xs n m ins = (slice xs 0 n) @ ins @ (slice xs m (length xs))"
@@ -35,6 +39,7 @@ lemma bv_to_bools_some:
 section\<open>Headers\<close>
 
 definition empty_headers :: headers where "empty_headers = Map.empty"
+declare empty_headers_def[simp]
 
 fun header_field_to_range_helper :: "nat \<Rightarrow> field list \<Rightarrow> field_name \<Rightarrow> (nat \<times> nat)" where
   "header_field_to_range_helper acc (f#fs) tgt = (if field_name f = tgt then (acc, acc + field_length f)

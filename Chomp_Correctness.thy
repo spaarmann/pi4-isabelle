@@ -70,7 +70,7 @@ qed
 
 lemma unchanged_packet_in_chomped_env:
   assumes h'_def: "h' = chomp\<^sub>S h 1"
-      and \<E>'_def: "\<E>' = \<E>[x \<rightarrow> empty_heap\<lparr> heap_headers := empty_headers(\<iota> \<mapsto> v) \<rparr>]"
+      and \<E>'_def: "\<E>' = \<E>[x \<rightarrow> empty_heap\<lparr> heap_headers := [\<iota> \<mapsto> v] \<rparr>]"
       and x_in_\<E>: "x \<in> env_dom \<E>
         \<Longrightarrow> (env_lookup_packet \<E> x PktIn = Some [] \<and> env_lookup_packet \<E> x PktOut = Some [])"
       and x_not_in_\<E>: "x \<notin> env_dom \<E> \<Longrightarrow> atom x \<sharp> (Packet z pkt)"
@@ -115,14 +115,16 @@ lemma semantic_chomp_exp:
   fixes e::exp and h::heap and h'::heap and \<E>::env and \<E>'::env and x::var and \<iota>::instanc
     and HT :: header_table
   assumes h'_def: "h' = chomp\<^sub>S h 1"
-      and \<E>'_def: "\<E>' = \<E>[x \<rightarrow> empty_heap\<lparr> heap_headers := empty_headers(\<iota> \<mapsto> v) \<rparr>]"
+      and \<E>'_def: "\<E>' = \<E>[x \<rightarrow> empty_heap\<lparr> heap_headers := [\<iota> \<mapsto> v] \<rparr>]"
       and x_in_\<E>: "x \<in> env_dom \<E>
         \<Longrightarrow> ((Some v = (map_option (\<lambda>bv. bv @ take 1 (heap_pkt_in h)) (env_lookup_instance \<E> x \<iota>)))
             \<and> env_lookup_packet \<E> x PktIn = Some []
             \<and> env_lookup_packet \<E> x PktOut = Some [])"
       and x_not_in_\<E>: "x \<notin> env_dom \<E> \<Longrightarrow> (v = take 1 (heap_pkt_in h)) \<and> atom x \<sharp> e"
       and has_pkt_in: "length (heap_pkt_in h) \<ge> 1" (* Is required I think, implied in the paper by h(pktIn)[0:1] being well-defined *)
+      and "x \<noteq> y" (* Not sure about this, paper doesn't state it, but I do think needs it? *)
       and "map_of HT \<iota> = Some \<eta>"
+      and "header_length \<eta> > 1" (* Zero-length headers don't make sense I think *)
       and "\<lbrakk>e in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = Some res"
 (* TODO: y just appears in the lemma. It probably needs freshness assumptions? *)
   shows "(\<lbrakk>heapRef\<^sub>1\<^sub>e (chomp\<^sub>1\<^sub>e e y) x \<iota> (header_length \<eta>) 1 in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e) = (\<lbrakk>e in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e)"
@@ -167,17 +169,15 @@ proof -
       assume "z = y"
       show ?case proof (cases pkt)
         assume "pkt = PktIn"
-        have "chomp\<^sub>1\<^sub>e (Packet y PktIn) y = Concat (Bv [BitVar]) (Packet y PktIn)" by (auto)
-        then have "?ref_chomp (Packet y PktIn)
-          = Concat (Concat (Slice (SlInstance x \<iota>) (?sz - 1) ?sz) (Bv [])) (Packet y PktIn)"
-          by (auto)
-        have "env_lookup_instance (\<E>'[y \<rightarrow> h']) x \<iota> = Some v" using \<E>'_def
-          by (auto simp add: env_lookup_instance_def env_update_def update_conv)
-        have "header_length \<eta> \<le> Suc (length v)" sorry
-        moreover then have "\<lbrakk>Concat (Slice (SlInstance x \<iota>) (?sz - 1) ?sz) (Bv []) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
-                        = Some (VBv (slice v (?sz - 1) ?sz))" using \<E>'_def
-          by (auto simp add: env_lookup_instance_def)
-(* = Some (VBv [last v])" by (auto) *)
+        {
+          have "env_lookup_instance (\<E>'[y \<rightarrow> h']) x \<iota> = Some v" using \<E>'_def and h'_def and \<open>x \<noteq> y\<close>
+            by (auto simp add: env_lookup_instance_def env_update_def update_conv)
+          moreover have "header_length \<eta> = length v" sorry
+          ultimately have "\<lbrakk>Concat (Slice (SlInstance x \<iota>) (?sz - 1) ?sz) (Bv []) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
+                        = Some (VBv [last v])" using \<E>'_def and \<open>?sz > 1\<close>
+            by (auto simp add: env_lookup_instance_def bv_to_val_def)
+               (metis One_nat_def Suc_lessD slice_last)
+        }
         moreover have "\<lbrakk>Packet y PktIn in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e = Some (VBv (heap_pkt_in h'))"
           by (auto simp add: env_lookup_packet_def)
         ultimately have "\<lbrakk>?ref_chomp (Packet y PktIn) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
@@ -196,6 +196,12 @@ proof -
         qed
         ultimately have "\<lbrakk>?ref_chomp (Packet y PktIn) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
           = Some (VBv (hd (heap_pkt_in h) # heap_pkt_in h'))" by (auto)
+        moreover have "hd (heap_pkt_in h) # heap_pkt_in h' = heap_pkt_in h"
+          using h'_def has_pkt_in by (auto simp add: chomp\<^sub>S_def drop_Suc)
+                                     (metis Suc_n_not_le_n hd_Cons_tl list.size(3))
+        moreover have "\<lbrakk>Packet z PktIn in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = Some (VBv (heap_pkt_in h))"
+          using \<open>z = y\<close> by (auto simp add: env_lookup_packet_def)
+        ultimately show ?case using \<open>z = y\<close> and \<open>pkt = PktIn\<close> by (auto)
       next
         assume "pkt = PktOut"
         then have ref_chomp_nop: "?ref_chomp (Packet z pkt) = Packet z pkt" by (auto)
