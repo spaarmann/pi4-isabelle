@@ -242,6 +242,6 @@ definition chomp :: "heap_ty \<Rightarrow> header_type \<Rightarrow> instanc \<R
 section\<open>Semantic chomp definition\<close>
 
 definition chomp\<^sub>S :: "heap \<Rightarrow> nat \<Rightarrow> heap" where
-  "chomp\<^sub>S h n = h\<lparr> heap_pkt_in := take n (heap_pkt_in h) \<rparr>"
+  "chomp\<^sub>S h n = h\<lparr> heap_pkt_in := drop n (heap_pkt_in h) \<rparr>"
 
 end
