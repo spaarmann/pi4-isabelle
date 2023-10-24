@@ -48,21 +48,29 @@ where
                 \<Longrightarrow> h \<Turnstile>\<E> (Choice \<tau>\<^sub>1 \<tau>\<^sub>2)" |
   Ent_ChoiceR:  "\<lbrakk> h \<Turnstile>\<E> \<tau>\<^sub>2 \<rbrakk>
                 \<Longrightarrow> h \<Turnstile>\<E> (Choice \<tau>\<^sub>1 \<tau>\<^sub>2)" |
-  Ent_Refine:   "\<lbrakk> h \<Turnstile>\<E> \<tau>; \<lbrakk>\<phi> in \<E>[x \<rightarrow> h]\<rbrakk>\<^sub>f = Some True \<rbrakk>
+  Ent_Refine:   "\<lbrakk> atom x \<sharp> (\<tau>, \<E>, h);
+                   h \<Turnstile>\<E> \<tau>; \<lbrakk>\<phi> in \<E>[x \<rightarrow> h]\<rbrakk>\<^sub>f = Some True \<rbrakk>
                 \<Longrightarrow> h \<Turnstile>\<E> (Refinement x \<tau> \<phi>)" |
-  Ent_Sigma:    "\<lbrakk> h = h\<^sub>1 ++ h\<^sub>2;
+  Ent_Sigma:    "\<lbrakk> atom x \<sharp> (\<tau>\<^sub>1, \<E>, h, h\<^sub>1, h\<^sub>2);
+                   h = h\<^sub>1 ++ h\<^sub>2;
                    h\<^sub>1 \<Turnstile>\<E> \<tau>\<^sub>1; h\<^sub>2 \<Turnstile>(\<E>[x \<rightarrow> h\<^sub>1]) \<tau>\<^sub>2\<rbrakk>
                 \<Longrightarrow> h \<Turnstile>\<E> (Sigma x \<tau>\<^sub>1 \<tau>\<^sub>2)" |
-  Ent_Subst:    "\<lbrakk> h\<^sub>2 \<Turnstile>\<E> \<tau>\<^sub>2; h \<Turnstile>(\<E>[x \<rightarrow> h\<^sub>2]) \<tau>\<^sub>1 \<rbrakk>
+  Ent_Subst:    "\<lbrakk> atom x \<sharp> (\<tau>\<^sub>2, \<E>, h, h\<^sub>2);
+                   h\<^sub>2 \<Turnstile>\<E> \<tau>\<^sub>2; h \<Turnstile>(\<E>[x \<rightarrow> h\<^sub>2]) \<tau>\<^sub>1 \<rbrakk>
                 \<Longrightarrow> h \<Turnstile>\<E> (Substitution \<tau>\<^sub>1 x \<tau>\<^sub>2)"
 
 declare heap_entails_ty.intros[simp]
 declare heap_entails_ty.intros[intro]
 
 equivariance heap_entails_ty
-(*nominal_inductive judge_weak
-  avoids jw_Lam: x
-       | jw_Rec: x and y
+declare fresh_star_def[simp]
+nominal_inductive heap_entails_ty
+  avoids Ent_Sigma: x
+       | Ent_Refine: x
+       | Ent_Subst: x
+  sorry
+  
+       (*| jw_Rec: x and y
        | jw_Let: x
        | jw_Roll: \<alpha>
        | jw_Unroll: \<alpha>
@@ -196,7 +204,8 @@ next
   case Top then show ?case by (auto)
 next
   case (Sigma x \<tau>\<^sub>1 \<tau>\<^sub>2)
-  from Sigma.prems obtain h\<^sub>1 h\<^sub>2 where "h\<^sub>2 \<Turnstile>(\<E>[x \<rightarrow> h\<^sub>1]) \<tau>\<^sub>2" apply (cases) using [[simproc del: alpha_lst]] apply (auto) done
+  thm Abs_lst1_fcb2'
+  from Sigma.prems obtain h\<^sub>1 h\<^sub>2 where "h\<^sub>2 \<Turnstile>(\<E>[x \<rightarrow> h\<^sub>1]) \<tau>\<^sub>2" apply (cases) apply (auto) sorry
   from Sigma.prems obtain h\<^sub>1 h\<^sub>2 where "h = h\<^sub>1 ++ h\<^sub>2" "h\<^sub>1 \<Turnstile>\<E> \<tau>\<^sub>1" apply (cases) apply (auto) done
   from Sigma.prems have "h\<^sub>2 \<Turnstile>(\<E>[x \<rightarrow> h\<^sub>1]) \<tau>\<^sub>2" apply (cases)
 (*  h = h\<^sub>1 ++ h\<^sub>2;
