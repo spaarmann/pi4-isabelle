@@ -111,25 +111,34 @@ subsection\<open>Main Correctness Results\<close>
    that actually holds if there are BitVars in the original expression.
    I add an assumption that e evaluates to Some value for now, not sure yet if this will need the
    full general equality for something later. *)
+(*
+ (Some v = (map_option (\<lambda>bv. bv @ take 1 (heap_pkt_in h)) (env_lookup_instance \<E> x \<iota>)))
+            \<and> map_option length (env_lookup_instance \<E> x \<iota>) = Some (header_length \<eta> - n)
+*)
 lemma semantic_chomp_exp:
   fixes e::exp and h::heap and h'::heap and \<E>::env and \<E>'::env and x::var and \<iota>::instanc
     and HT :: header_table
-  assumes h'_def: "h' = chomp\<^sub>S h 1"
+  assumes "map_of HT \<iota> = Some \<eta>"
+      and "header_length \<eta> \<ge> 1" (* Zero-length headers don't make sense I think *)
+      and h'_def: "h' = chomp\<^sub>S h 1"
       and \<E>'_def: "\<E>' = \<E>[x \<rightarrow> empty_heap\<lparr> heap_headers := [\<iota> \<mapsto> v] \<rparr>]"
       and x_in_\<E>: "x \<in> env_dom \<E>
-        \<Longrightarrow> ((Some v = (map_option (\<lambda>bv. bv @ take 1 (heap_pkt_in h)) (env_lookup_instance \<E> x \<iota>)))
+        \<Longrightarrow> (env_lookup_instance \<E> x \<iota> = Some x_\<iota>
+            \<and> v = x_\<iota> @ take 1 (heap_pkt_in h)
+            \<and> length x_\<iota> = header_length \<eta> - n
             \<and> env_lookup_packet \<E> x PktIn = Some []
             \<and> env_lookup_packet \<E> x PktOut = Some [])"
-      and x_not_in_\<E>: "x \<notin> env_dom \<E> \<Longrightarrow> (v = take 1 (heap_pkt_in h)) \<and> atom x \<sharp> e"
+      and x_not_in_\<E>: "x \<notin> env_dom \<E> \<Longrightarrow> (v = take 1 (heap_pkt_in h))
+                    \<and> atom x \<sharp> e
+                    \<and> header_length \<eta> = n"
       and has_pkt_in: "length (heap_pkt_in h) \<ge> 1" (* Is required I think, implied in the paper by h(pktIn)[0:1] being well-defined *)
+      and "n \<ge> 1"
       and "x \<noteq> y" (* Not sure about this, paper doesn't state it, but I do think needs it? *)
-      and "map_of HT \<iota> = Some \<eta>"
-      and "header_length \<eta> > 1" (* Zero-length headers don't make sense I think *)
       and "\<lbrakk>e in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = Some res"
 (* TODO: y just appears in the lemma. It probably needs freshness assumptions? *)
-  shows "(\<lbrakk>heapRef\<^sub>1\<^sub>e (chomp\<^sub>1\<^sub>e e y) x \<iota> (header_length \<eta>) 1 in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e) = (\<lbrakk>e in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e)"
+  shows "(\<lbrakk>heapRef\<^sub>1\<^sub>e (chomp\<^sub>1\<^sub>e e y) x \<iota> (header_length \<eta>) n in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e) = (\<lbrakk>e in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e)"
 proof -
-  let ?ref_chomp = "\<lambda>e. heapRef\<^sub>1\<^sub>e (chomp\<^sub>1\<^sub>e e y) x \<iota> (header_length \<eta>) 1"
+  let ?ref_chomp = "\<lambda>e. heapRef\<^sub>1\<^sub>e (chomp\<^sub>1\<^sub>e e y) x \<iota> (header_length \<eta>) n"
   let ?sz = "header_length \<eta>"
   have "(\<exists>res. \<lbrakk>e in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = Some res) \<Longrightarrow> (x \<notin> env_dom \<E> \<longrightarrow> atom x \<sharp> e)  \<Longrightarrow> ?thesis"
   proof (induction e)
@@ -169,14 +178,22 @@ proof -
       assume "z = y"
       show ?case proof (cases pkt)
         assume "pkt = PktIn"
+        have v_length: "?sz - n + 1 = length v"
+          using x_in_\<E> x_not_in_\<E> has_pkt_in by (cases \<open>x \<in> env_dom \<E>\<close>) (auto)
         {
           have "env_lookup_instance (\<E>'[y \<rightarrow> h']) x \<iota> = Some v" using \<E>'_def and h'_def and \<open>x \<noteq> y\<close>
             by (auto simp add: env_lookup_instance_def env_update_def update_conv)
-          moreover have "header_length \<eta> = length v" sorry
-          ultimately have "\<lbrakk>Concat (Slice (SlInstance x \<iota>) (?sz - 1) ?sz) (Bv []) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
-                        = Some (VBv [last v])" using \<E>'_def and \<open>?sz > 1\<close>
-            by (auto simp add: env_lookup_instance_def bv_to_val_def)
-               (metis One_nat_def Suc_lessD slice_last)
+          then have "\<lbrakk>Concat (Slice (SlInstance x \<iota>) (?sz - n) ?sz) (Bv []) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
+                        = Some (VBv [last v])" using \<E>'_def \<open>?sz \<ge> 1\<close> v_length \<open>n \<ge> 1\<close>
+            apply (auto simp add: bv_to_val_def)
+            (* TODO: this definitely wants a nicer proof than this sledgehammered mess *)
+            apply (smt (verit, ccfv_SIG) Suc_eq_plus1_left Suc_pred' add.commute append_Nil2
+                      append_eq_conv_conj append_take_drop_id diff_add_0 diff_add_inverse diff_cancel2
+                      diff_diff_cancel diff_is_0_eq diff_le_self drop_eq_Nil2 drop_take leI length_drop
+                      not_less_eq not_less_eq_eq plus_nat.add_0 slice_def slice_last v_length
+                      verit_comp_simplify1(3) verit_sum_simplify)
+            
+(*               (metis One_nat_def Suc_lessD slice_last)*)
         }
         moreover have "\<lbrakk>Packet y PktIn in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e = Some (VBv (heap_pkt_in h'))"
           by (auto simp add: env_lookup_packet_def)
