@@ -133,6 +133,7 @@ lemma semantic_chomp_exp:
                     \<and> header_length \<eta> = n"
       and has_pkt_in: "length (heap_pkt_in h) \<ge> 1" (* Is required I think, implied in the paper by h(pktIn)[0:1] being well-defined *)
       and "n \<ge> 1"
+      and "n \<le> header_length \<eta>"
       and "x \<noteq> y" (* Not sure about this, paper doesn't state it, but I do think needs it? *)
       and "\<lbrakk>e in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = Some res"
 (* TODO: y just appears in the lemma. It probably needs freshness assumptions? *)
@@ -183,17 +184,14 @@ proof -
         {
           have "env_lookup_instance (\<E>'[y \<rightarrow> h']) x \<iota> = Some v" using \<E>'_def and h'_def and \<open>x \<noteq> y\<close>
             by (auto simp add: env_lookup_instance_def env_update_def update_conv)
-          then have "\<lbrakk>Concat (Slice (SlInstance x \<iota>) (?sz - n) ?sz) (Bv []) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
-                        = Some (VBv [last v])" using \<E>'_def \<open>?sz \<ge> 1\<close> v_length \<open>n \<ge> 1\<close>
-            apply (auto simp add: bv_to_val_def)
-            (* TODO: this definitely wants a nicer proof than this sledgehammered mess *)
-            apply (smt (verit, ccfv_SIG) Suc_eq_plus1_left Suc_pred' add.commute append_Nil2
-                      append_eq_conv_conj append_take_drop_id diff_add_0 diff_add_inverse diff_cancel2
-                      diff_diff_cancel diff_is_0_eq diff_le_self drop_eq_Nil2 drop_take leI length_drop
-                      not_less_eq not_less_eq_eq plus_nat.add_0 slice_def slice_last v_length
-                      verit_comp_simplify1(3) verit_sum_simplify)
-            
-(*               (metis One_nat_def Suc_lessD slice_last)*)
+
+          then have "\<lbrakk>Slice (SlInstance x \<iota>) (?sz - n) (?sz + 1 - n) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
+                      = Some (VBv [last v])" using v_length \<open>?sz \<ge> 1\<close> \<open>n \<ge> 1\<close> \<open>n \<le> ?sz\<close>
+            by (auto) (metis Suc_diff_le diff_Suc_1 slice_last zero_less_Suc)
+
+          then have "\<lbrakk>Concat (Slice (SlInstance x \<iota>) (?sz - n) (?sz + 1 - n)) (Bv []) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
+                        = Some (VBv [last v])" using \<E>'_def \<open>?sz \<ge> 1\<close> v_length \<open>n \<ge> 1\<close> \<open>n \<le> ?sz\<close>
+            by (auto simp add: bv_to_val_def)
         }
         moreover have "\<lbrakk>Packet y PktIn in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e = Some (VBv (heap_pkt_in h'))"
           by (auto simp add: env_lookup_packet_def)
@@ -201,8 +199,7 @@ proof -
           = Some (VBv ([last v] @ heap_pkt_in h'))" by (auto)
         moreover have "last v = hd (heap_pkt_in h)" using x_in_\<E> and x_not_in_\<E> proof (cases "x \<in> env_dom \<E>")
           assume "x \<in> env_dom \<E>"
-          then have "\<exists>b. v = b @ take 1 (heap_pkt_in h)" using x_in_\<E>
-            by (metis None_eq_map_option_iff option.discI option.map_sel option.sel)
+          then have "\<exists>b. v = b @ take 1 (heap_pkt_in h)" using x_in_\<E> by (auto)
           then show "last v = hd (heap_pkt_in h)" using has_pkt_in
             by (metis One_nat_def hd_conv_nth last_appendR last_snoc length_greater_0_conv
                       order.strict_trans2 take_Suc_conv_app_nth take_eq_Nil2 zero_less_one zero_neq_one)
