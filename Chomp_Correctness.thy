@@ -228,7 +228,34 @@ proof -
     qed
   next
     case (Len z pkt)
-    then show ?case sorry
+    show ?case proof (cases \<open>z = y\<close>)
+      assume "z = y"
+      then show ?case proof (cases pkt)
+        assume "pkt = PktIn"
+        then have "?ref_chomp (Len y pkt) = Plus (Num 1) (Len y pkt)" by (auto)
+        then show ?case using \<open>z = y\<close> \<open>pkt = PktIn\<close> h'_def chomp\<^sub>S_def has_pkt_in
+          by (auto simp add: env_lookup_packet_def)
+      next
+        assume "pkt = PktOut"
+        then have "?ref_chomp (Len y pkt) = Len y pkt" by (auto)
+        then show ?case using \<open>z = y\<close> \<open>pkt = PktOut\<close> h'_def chomp\<^sub>S_def
+          by (auto simp add: env_lookup_packet_def)
+      qed
+    next
+      assume "z \<noteq> y"
+      then have chomp_nop_len: "?ref_chomp (Len z pkt) = Len z pkt" by (cases pkt) (auto)
+      show ?case proof (cases \<open>z = x\<close>)
+        assume "z = x"
+        have "atom x \<sharp> Len x pkt \<Longrightarrow> False" by (metis fresh_at_base(2) fresh_def supp_Len)
+        then show ?case using \<open>z = x\<close> \<open>z \<noteq> y\<close> \<E>'_def x_in_\<E> x_not_in_\<E> Len
+          by (cases \<open>x \<in> env_dom \<E>\<close>; cases pkt) (auto simp add: env_lookup_packet_def)
+      next
+        assume "z \<noteq> x"
+        from \<open>z \<noteq> x\<close> \<open>z \<noteq> y\<close> have "\<lbrakk>Len z pkt in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = (\<lbrakk>Len z pkt in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e)"
+          using \<E>'_def by (auto simp add: env_lookup_packet_def)
+        then show ?case using chomp_nop_len by (auto)
+      qed
+    qed
   next
     case (Slice sl n m)
     then show ?case sorry
