@@ -136,6 +136,10 @@ lemma SlPacket_eqvt[eqvt]: "p \<bullet> (SlPacket x pkt) = SlPacket (p \<bullet>
   by (auto simp add: permute_pure)
 lemma SlInstance_eqvt[eqvt]: "p \<bullet> (SlInstance x \<iota>) = SlInstance (p \<bullet> x) (p \<bullet> \<iota>)"
   by (auto simp add: permute_pure)
+lemma supp_SlPacket: "supp (SlPacket x pkt) = supp x"
+  by (auto simp add: supp_def)
+lemma supp_SlInstance: "supp (SlInstance x \<iota>) = supp x"
+  by (auto simp add: supp_def)
 
 datatype val = VNum nat | VBv bv
 instantiation val :: pure begin

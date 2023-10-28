@@ -243,7 +243,7 @@ proof -
       qed
     next
       assume "z \<noteq> y"
-      then have chomp_nop_len: "?ref_chomp (Len z pkt) = Len z pkt" by (cases pkt) (auto)
+      then have ref_chomp_nop: "?ref_chomp (Len z pkt) = Len z pkt" by (cases pkt) (auto)
       show ?case proof (cases \<open>z = x\<close>)
         assume "z = x"
         have "atom x \<sharp> Len x pkt \<Longrightarrow> False" by (metis fresh_at_base(2) fresh_def supp_Len)
@@ -253,12 +253,68 @@ proof -
         assume "z \<noteq> x"
         from \<open>z \<noteq> x\<close> \<open>z \<noteq> y\<close> have "\<lbrakk>Len z pkt in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = (\<lbrakk>Len z pkt in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e)"
           using \<E>'_def by (auto simp add: env_lookup_packet_def)
-        then show ?case using chomp_nop_len by (auto)
+        then show ?case using ref_chomp_nop by (auto)
       qed
     qed
   next
-    case (Slice sl n m)
-    then show ?case sorry
+    case (Slice sl l r)
+    show ?case proof (cases sl)
+      fix z pkt
+      assume SlPacket: "sl = SlPacket z pkt"
+      show ?case proof (cases \<open>z = y\<close>)
+        assume "z \<noteq> y"
+        then have ref_chomp_nop: "?ref_chomp (Slice sl l r) = Slice sl l r" using SlPacket
+          by (cases pkt) (auto)
+        then show ?case proof (cases \<open>z = x\<close>)
+          assume "z = x"
+          have "atom x \<sharp> Slice (SlPacket x pkt) l r \<Longrightarrow> False"
+            by (metis fresh_at_base(2) fresh_def supp_Slice supp_SlPacket)
+          then show ?case
+            using \<open>z = x\<close> \<open>z \<noteq> y\<close> ref_chomp_nop \<E>'_def x_in_\<E> x_not_in_\<E> SlPacket Slice(2)
+            by (cases \<open>x \<in> env_dom \<E>\<close>; cases pkt) (auto simp add: env_lookup_packet_def)
+        next
+          assume "z \<noteq> x"
+          then show ?case using \<open>z \<noteq> y\<close> ref_chomp_nop SlPacket \<E>'_def
+            by (auto simp add: env_lookup_packet_def)
+        qed
+      next
+        assume "z = y"
+        (* These subcases require a lot of the same reasoning as for the Packet case above I think,
+           it's probably worth deduplicating that. *)
+        show ?case proof (cases \<open>r \<le> 1\<close>)
+          assume "r \<le> 1"
+          then show ?case sorry
+        next
+          assume "\<not>(r \<le> 1)"
+          then show ?case proof (cases \<open>l = 0\<close>)
+            assume "l = 0"
+            then show ?case sorry
+          next
+            assume "l \<noteq> 0"
+            then show ?case sorry
+          qed
+        qed
+      qed
+    next
+      fix z \<iota>
+      assume SlInstance: "sl = SlInstance z \<iota>"
+      then have ref_chomp_nop: "?ref_chomp (Slice sl l r) = Slice sl l r" by (auto)
+      show ?case proof (cases \<open>z = y\<close>)
+        assume "z = y"
+        then show ?case using ref_chomp_nop SlInstance h'_def chomp\<^sub>S_def
+          by (auto simp add: env_lookup_instance_def)
+      next
+        assume "z \<noteq> y"
+        show ?case proof (cases \<open>z = x\<close>)
+          assume "z = x"
+          then show ?case sorry (* oh oh. Maybe \<E>' should just update x's heap instead of replacing it? *)
+        next
+          assume "z \<noteq> x"
+          then show ?case using \<open>z \<noteq> y\<close> ref_chomp_nop SlInstance \<E>'_def
+            by (auto simp add: env_lookup_instance_def)
+        qed
+      qed
+    qed
   qed
   then show ?thesis using assms by auto
 qed
