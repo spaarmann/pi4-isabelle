@@ -126,7 +126,7 @@ lemma env_lookup_packet_eqvt[eqvt]:
 lemma env_lookup_packet_update_other:
   "x \<noteq> y \<Longrightarrow> env_lookup_packet \<E>[y \<rightarrow> h] x pkt = env_lookup_packet \<E> x pkt"
 proof -
-  have "x \<noteq> y \<Longrightarrow> map_of (heaps \<E>) x = map_of (heaps \<E>[y \<rightarrow> h]) x" by (simp add: env_update_other)
+  have "x \<noteq> y \<Longrightarrow> map_of (heaps \<E>) x = map_of (heaps \<E>[y \<rightarrow> h]) x" by (simp)
   moreover assume "x \<noteq> y"
   ultimately show ?thesis by (auto simp add: env_lookup_packet_def)
 qed

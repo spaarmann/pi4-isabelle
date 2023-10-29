@@ -236,10 +236,65 @@ lemma Slice_eqvt[eqvt]: "p \<bullet> (Slice sl n m) = Slice (p \<bullet> sl) (p 
   by (cases sl) (auto simp add: permute_pure)
 
 
-nominal_datatype formula =
+datatype formula =
   FTrue | FFalse |
   Eq exp exp | Gt exp exp | And formula formula | Not formula |
   IsValid var instanc
+instantiation formula :: pt begin
+  fun permute_formula :: "perm \<Rightarrow> formula \<Rightarrow> formula" where
+    "p \<bullet> FTrue = FTrue" |
+    "p \<bullet> FFalse = FFalse" |
+    "p \<bullet> (Eq e\<^sub>1 e\<^sub>2) = Eq (p \<bullet> e\<^sub>1) (p \<bullet> e\<^sub>2)" |
+    "p \<bullet> (Gt e\<^sub>1 e\<^sub>2) = Gt (p \<bullet> e\<^sub>1) (p \<bullet> e\<^sub>2)" |
+    "p \<bullet> (And \<phi>\<^sub>1 \<phi>\<^sub>2) = And (p \<bullet> \<phi>\<^sub>1) (p \<bullet> \<phi>\<^sub>2)" |
+    "p \<bullet> (Not \<phi>) = Not (p \<bullet> \<phi>)" |
+    "p \<bullet> (IsValid x \<iota>) = IsValid (p \<bullet> x) \<iota>"
+  instance apply (standard)
+    subgoal for \<phi> by (induction \<phi>) (auto)
+    subgoal for p q \<phi> by (induction \<phi>) (auto)
+  done
+end
+declare permute_formula.simps(3)[eqvt]
+declare permute_formula.simps(4)[eqvt]
+declare permute_formula.simps(5)[eqvt]
+declare permute_formula.simps(6)[eqvt]
+lemma IsValid_eqvt[eqvt]: "p \<bullet> (IsValid x \<iota>) = IsValid (p \<bullet> x) (p \<bullet> \<iota>)" by (auto simp add: permute_pure)
+
+lemma supp_Eq: "supp (Eq e\<^sub>1 e\<^sub>2) = supp e\<^sub>1 \<union> supp e\<^sub>2"
+proof -
+  have "\<forall>a. {b. (a \<rightleftharpoons> b) \<bullet> (Eq e\<^sub>1 e\<^sub>2) \<noteq> (Eq e\<^sub>1 e\<^sub>2)}
+    = {b. (a \<rightleftharpoons> b) \<bullet> e\<^sub>1 \<noteq> e\<^sub>1} \<union> {b. (a \<rightleftharpoons> b) \<bullet> e\<^sub>2 \<noteq> e\<^sub>2}" by (auto)
+  then show ?thesis by (auto simp add: supp_def)
+qed
+lemma supp_Gt: "supp (Gt e\<^sub>1 e\<^sub>2) = supp e\<^sub>1 \<union> supp e\<^sub>2"
+proof -
+  have "\<forall>a. {b. (a \<rightleftharpoons> b) \<bullet> (Gt e\<^sub>1 e\<^sub>2) \<noteq> (Gt e\<^sub>1 e\<^sub>2)}
+    = {b. (a \<rightleftharpoons> b) \<bullet> e\<^sub>1 \<noteq> e\<^sub>1} \<union> {b. (a \<rightleftharpoons> b) \<bullet> e\<^sub>2 \<noteq> e\<^sub>2}" by (auto)
+  then show ?thesis by (auto simp add: supp_def)
+qed
+lemma supp_And: "supp (And \<phi>\<^sub>1 \<phi>\<^sub>2) = supp \<phi>\<^sub>1 \<union> supp \<phi>\<^sub>2"
+proof -
+  have "\<forall>a. {b. (a \<rightleftharpoons> b) \<bullet> (And \<phi>\<^sub>1 \<phi>\<^sub>2) \<noteq> (And \<phi>\<^sub>1 \<phi>\<^sub>2)}
+    = {b. (a \<rightleftharpoons> b) \<bullet> \<phi>\<^sub>1 \<noteq> \<phi>\<^sub>1} \<union> {b. (a \<rightleftharpoons> b) \<bullet> \<phi>\<^sub>2 \<noteq> \<phi>\<^sub>2}" by (auto)
+  then show ?thesis by (auto simp add: supp_def)
+qed
+lemma supp_Not: "supp (Not \<phi>) = supp \<phi>" by (auto simp add: supp_def)
+lemma supp_IsValid: "supp (IsValid x \<iota>) = supp x" by (auto simp add: supp_def)
+
+instantiation formula :: fs begin
+  instance proof
+    fix \<phi>::formula
+    show "finite (supp \<phi>)" proof (induction \<phi>)
+      case FTrue show ?case by (auto simp add: supp_def) next
+      case FFalse show ?case by (auto simp add: supp_def) next
+      case (Eq e\<^sub>1 e\<^sub>2) show ?case by (auto simp add: supp_Eq finite_supp) next
+      case (Gt e\<^sub>1 e\<^sub>2) show ?case by (auto simp add: supp_Gt finite_supp) next
+      case (And \<phi>\<^sub>1 \<phi>\<^sub>2) then show ?case by (auto simp add: supp_And) next
+      case (Not \<phi>) then show ?case by (auto simp add: supp_Not) next
+      case (IsValid x \<iota>) then show ?case by (auto simp add: supp_IsValid finite_supp)
+    qed
+  qed
+end
 
 inductive "value\<^sub>e" :: "exp \<Rightarrow> bool" where
   "value\<^sub>e (Num _)" |
@@ -253,7 +308,7 @@ inductive "value\<^sub>f" :: "formula \<Rightarrow> bool" where
   "value\<^sub>f FFalse"
 declare value\<^sub>f.intros[simp]
 declare value\<^sub>f.intros[intro]
-equivariance "value\<^sub>f"
+(*equivariance "value\<^sub>f"*)
 
 section\<open>Types\<close>
 

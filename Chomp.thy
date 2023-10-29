@@ -26,7 +26,7 @@ lemma chomp\<^sub>1\<^sub>e_eqvt[eqvt]: "p \<bullet> chomp\<^sub>1\<^sub>e e y =
   subgoal for sl n m apply (cases sl) apply (auto) subgoal for x pkt by (cases pkt) (auto) done
 done
 
-nominal_function chomp\<^sub>1\<^sub>\<phi> :: "formula \<Rightarrow> var \<Rightarrow> formula" where
+fun chomp\<^sub>1\<^sub>\<phi> :: "formula \<Rightarrow> var \<Rightarrow> formula" where
   "chomp\<^sub>1\<^sub>\<phi> (Eq e\<^sub>1 e\<^sub>2) x = Eq (chomp\<^sub>1\<^sub>e e\<^sub>1 x) (chomp\<^sub>1\<^sub>e e\<^sub>2 x)" |
   "chomp\<^sub>1\<^sub>\<phi> (Gt e\<^sub>1 e\<^sub>2) x = Gt (chomp\<^sub>1\<^sub>e e\<^sub>1 x) (chomp\<^sub>1\<^sub>e e\<^sub>2 x)" |
   "chomp\<^sub>1\<^sub>\<phi> (And \<phi>\<^sub>1 \<phi>\<^sub>2) x = And (chomp\<^sub>1\<^sub>\<phi> \<phi>\<^sub>1 x) (chomp\<^sub>1\<^sub>\<phi> \<phi>\<^sub>2 x)" |
@@ -34,14 +34,8 @@ nominal_function chomp\<^sub>1\<^sub>\<phi> :: "formula \<Rightarrow> var \<Righ
   "chomp\<^sub>1\<^sub>\<phi> FTrue _ = FTrue" |
   "chomp\<^sub>1\<^sub>\<phi> FFalse _ = FFalse" |
   "chomp\<^sub>1\<^sub>\<phi> (IsValid x \<iota>) _ = IsValid x \<iota>"
-  subgoal by (auto simp add: eqvt_def chomp\<^sub>1\<^sub>\<phi>_graph_aux_def)
-  subgoal by (simp)
-  apply (clarify)
-  subgoal for P \<phi> x by (rule formula.strong_exhaust[of \<phi> P]) (auto)
-  apply (simp_all)
-done
-nominal_termination (eqvt)
-  by lexicographic_order
+lemma chomp\<^sub>1\<^sub>\<phi>_eqvt[eqvt]: "p \<bullet> chomp\<^sub>1\<^sub>\<phi> \<phi> x = chomp\<^sub>1\<^sub>\<phi> (p \<bullet> \<phi>) (p \<bullet> x)"
+  by (induction \<phi>) (auto)
 
 nominal_function chompRef\<^sub>1 :: "heap_ty \<Rightarrow> var \<Rightarrow> heap_ty" where
   "atom y \<sharp> (x, \<tau>\<^sub>1) \<Longrightarrow> chompRef\<^sub>1 (Sigma y \<tau>\<^sub>1 \<tau>\<^sub>2) x = Sigma y (chompRef\<^sub>1 \<tau>\<^sub>1 x) (chompRef\<^sub>1 \<tau>\<^sub>2 x)" |
@@ -122,21 +116,16 @@ nominal_termination (eqvt)
 
 text\<open>We outline the recursive bitvector case for heapRef1e because lexicographic_order is not able
 to prove termination otherwise, since we would have to construct a new Bv exp in the recursive call.\<close>
-nominal_function heapRefBv :: "bv \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> exp" where
+fun heapRefBv :: "bv \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> exp" where
   (* The slice upper bound is originally "sz - n + 1" but swapping the order avoids the annoying
      nat edge case. *)
   "heapRefBv (b#bv) x \<iota> sz n = Concat (if b = BitVar
     then Slice (SlInstance x \<iota>) (sz - n) (sz + 1 - n)
     else Bv [b]) (heapRefBv bv x \<iota> sz n)" |
   "heapRefBv [] _ _ _ _ = Bv []"
-  subgoal by (simp add: eqvt_def heapRefBv_graph_aux_def)
-  subgoal by (simp)
-  apply (clarify)
-  subgoal by (rule list.exhaust) (auto)
-  apply (auto)
-done
-nominal_termination (eqvt)
-  by lexicographic_order
+lemma heapRefBv_eqvt[eqvt]:
+  "p \<bullet> heapRefBv bv x \<iota> sz n = heapRefBv (p \<bullet> bv) (p \<bullet> x) (p \<bullet> \<iota>) (p \<bullet> sz) (p \<bullet> n)"
+  by (induction bv) (auto simp add: permute_pure)
 
 text\<open>It is useful to have heapRef not change bit vectors that contain no BitVars at all (and the
 paper claims so despite mirroring the heapRefBv definition above), so we flatten Concats of single
@@ -175,7 +164,7 @@ lemma heapRef\<^sub>1\<^sub>e_eqvt[eqvt]:
   "p \<bullet> heapRef\<^sub>1\<^sub>e e x \<iota> sz n = heapRef\<^sub>1\<^sub>e (p \<bullet> e) (p \<bullet> x) (p \<bullet> \<iota>) (p \<bullet> sz) (p \<bullet> n)"
   by (induction e) (auto simp add: permute_pure)
 
-nominal_function heapRef\<^sub>1\<^sub>\<phi> :: "formula \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> formula" where
+fun heapRef\<^sub>1\<^sub>\<phi> :: "formula \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> formula" where
   "heapRef\<^sub>1\<^sub>\<phi> (Eq e\<^sub>1 e\<^sub>2) x \<iota> sz n = Eq (heapRef\<^sub>1\<^sub>e e\<^sub>1 x \<iota> sz n) (heapRef\<^sub>1\<^sub>e e\<^sub>2 x \<iota> sz n)" |
   "heapRef\<^sub>1\<^sub>\<phi> (Gt e\<^sub>1 e\<^sub>2) x \<iota> sz n = Gt (heapRef\<^sub>1\<^sub>e e\<^sub>1 x \<iota> sz n) (heapRef\<^sub>1\<^sub>e e\<^sub>2 x \<iota> sz n)" |
   "heapRef\<^sub>1\<^sub>\<phi> (And \<phi>\<^sub>1 \<phi>\<^sub>2) x \<iota> sz n = And (heapRef\<^sub>1\<^sub>\<phi> \<phi>\<^sub>1 x \<iota> sz n) (heapRef\<^sub>1\<^sub>\<phi> \<phi>\<^sub>2 x \<iota> sz n)" |
@@ -183,14 +172,9 @@ nominal_function heapRef\<^sub>1\<^sub>\<phi> :: "formula \<Rightarrow> var \<Ri
   "heapRef\<^sub>1\<^sub>\<phi> FTrue _ _ _ _ = FTrue" |
   "heapRef\<^sub>1\<^sub>\<phi> FFalse _ _ _ _ = FFalse" |
   "heapRef\<^sub>1\<^sub>\<phi> (IsValid x \<iota>) _ _ _ _ = IsValid x \<iota>"
-  subgoal by (simp add: eqvt_def heapRef\<^sub>1\<^sub>\<phi>_graph_aux_def)
-  subgoal by (simp)
-  apply (clarify)
-  subgoal by (rule formula.strong_exhaust) (auto)
-  apply (auto)
-done
-nominal_termination (eqvt)
-  by lexicographic_order
+lemma heapRef\<^sub>1\<^sub>\<phi>_eqvt[eqvt]:
+  "p \<bullet> heapRef\<^sub>1\<^sub>\<phi> \<phi> x \<iota> sz n = heapRef\<^sub>1\<^sub>\<phi> (p \<bullet> \<phi>) (p \<bullet> x) (p \<bullet> \<iota>) (p \<bullet> sz) (p \<bullet> n)"
+  by (induction \<phi>) (auto simp add: permute_pure)
 
 nominal_function heapRef\<^sub>1 :: "heap_ty \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> heap_ty" where
   "atom x \<sharp> (y, \<tau>\<^sub>1)

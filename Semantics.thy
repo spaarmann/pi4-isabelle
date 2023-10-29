@@ -62,7 +62,7 @@ lemma subst_var_exp_eqvt[eqvt]: "p \<bullet> e[s/y]\<^sub>e = (p \<bullet> e)[(p
   subgoal for sl apply (cases sl) apply (auto) done
 done
 
-nominal_function subst_var_formula :: "formula \<Rightarrow> var \<Rightarrow> var \<Rightarrow> formula"
+fun subst_var_formula :: "formula \<Rightarrow> var \<Rightarrow> var \<Rightarrow> formula"
   ("_[_ '/ _]\<^sub>f" [1000, 49, 49] 1000)
 where
   "FTrue[s/y]\<^sub>f = FTrue" |
@@ -72,14 +72,8 @@ where
   "(And \<phi>\<^sub>1 \<phi>\<^sub>2)[s/y]\<^sub>f = And \<phi>\<^sub>1[s/y]\<^sub>f \<phi>\<^sub>2[s/y]\<^sub>f" |
   "(Not \<phi>)[s/y]\<^sub>f = Not \<phi>[s/y]\<^sub>f" |
   "(IsValid x \<iota>)[s/y]\<^sub>f = IsValid (if x = y then s else x) \<iota>"
-  subgoal by (simp add: eqvt_def subst_var_formula_graph_aux_def)
-  subgoal by (simp)
-  apply (clarify)
-  subgoal for P \<phi> s y by (rule formula.strong_exhaust[of \<phi> P]) (auto)
-  apply (auto)
-done
-nominal_termination (eqvt)
-  by lexicographic_order
+lemma subst_var_formula_eqvt[eqvt]: "p \<bullet> \<phi>[s/y]\<^sub>f = (p \<bullet> \<phi>)[(p \<bullet> s)/(p \<bullet> y)]\<^sub>f"
+  by (induction \<phi>) (auto)
 
 
 subsection\<open>Small-step semantics\<close>
@@ -215,7 +209,7 @@ lemma exp_sem_no_BitVar: "\<lbrakk>Bv bv in \<E>\<rbrakk>\<^sub>e = Some v \<Lon
 
 text\<open>Unlike for the small-step semantics, semantic expression equality and comparison is explicitly
 defined to be False when the semantics of either operand are undefined. (See section 3.3, p. 9)\<close>
-nominal_function formula_sem :: "formula \<Rightarrow> env \<Rightarrow> bool option" ("\<lbrakk>_ in _\<rbrakk>\<^sub>f" [50,60] 50)
+fun formula_sem :: "formula \<Rightarrow> env \<Rightarrow> bool option" ("\<lbrakk>_ in _\<rbrakk>\<^sub>f" [50,60] 50)
 where
   "\<lbrakk>FTrue in \<E>\<rbrakk>\<^sub>f = Some True" |
   "\<lbrakk>FFalse in \<E>\<rbrakk>\<^sub>f = Some False" |
@@ -227,15 +221,12 @@ where
     Some True \<Rightarrow> \<lbrakk>f\<^sub>2 in \<E>\<rbrakk>\<^sub>f)" |
   "\<lbrakk>Not f\<^sub>1 in \<E>\<rbrakk>\<^sub>f = map_option (\<lambda>b. \<not>b) (\<lbrakk>f\<^sub>1 in \<E>\<rbrakk>\<^sub>f)" |
   "\<lbrakk>IsValid x \<iota> in \<E>\<rbrakk>\<^sub>f = map_option (\<lambda>bv. True) (env_lookup_instance \<E> x \<iota>)"
-  subgoal by (simp add: eqvt_def formula_sem_graph_aux_def)
-  subgoal by (erule formula_sem_graph.induct) (auto)
-  apply clarify
-  subgoal for P \<phi> \<E>
-    by (rule formula.strong_exhaust[of \<phi> P]) (auto)
-  apply (simp_all)
+
+lemma formula_sem_eqvt[eqvt]: "p \<bullet> (\<lbrakk>\<phi> in \<E>\<rbrakk>\<^sub>f) = (\<lbrakk>p \<bullet> \<phi> in p \<bullet> \<E>\<rbrakk>\<^sub>f)"
+  apply (induction \<phi>)
+  apply (auto)
+  apply (simp_all add: permute_pure split: option.split bool.split)
 done
-nominal_termination (eqvt)
-  by lexicographic_order
 
 section\<open>Commands\<close>
 
