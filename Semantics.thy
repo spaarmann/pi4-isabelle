@@ -228,6 +228,14 @@ lemma formula_sem_eqvt[eqvt]: "p \<bullet> (\<lbrakk>\<phi> in \<E>\<rbrakk>\<^s
   apply (simp_all add: permute_pure split: option.split bool.split)
 done
 
+lemma formula_sem_Eq_Some1: "\<lbrakk>Eq e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>f = Some v \<Longrightarrow> (\<exists>v\<^sub>1. \<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e = Some v\<^sub>1)"
+proof (rule ccontr)
+  assume eq_some: "\<lbrakk>Eq e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>f = Some v"
+  assume "\<nexists>v\<^sub>1. (\<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e) = Some v\<^sub>1" then have "\<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e = None" by (auto)
+  then have "\<lbrakk>Eq e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>f = None" apply (auto split: option.split split: val.split)
+  then show "False" using plus_some by (auto)
+qed
+
 section\<open>Commands\<close>
 
 (* I added HT as the extra ambient/global context explicitly here. *)

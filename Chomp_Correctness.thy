@@ -141,7 +141,7 @@ lemma semantic_chomp_exp:
 proof -
   let ?ref_chomp = "\<lambda>e. heapRef\<^sub>1\<^sub>e (chomp\<^sub>1\<^sub>e e y) x \<iota> (header_length \<eta>) n"
   let ?sz = "header_length \<eta>"
-  have "(\<exists>res. \<lbrakk>e in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = Some res) \<Longrightarrow> (x \<notin> env_dom \<E> \<longrightarrow> atom x \<sharp> e)  \<Longrightarrow> ?thesis"
+  have "(\<exists>res. \<lbrakk>e in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = Some res) \<Longrightarrow> (x \<notin> env_dom \<E> \<longrightarrow> atom x \<sharp> e) \<Longrightarrow> ?thesis"
   proof (induction e)
     case (Num n)
     then show ?case by (auto)
@@ -283,6 +283,8 @@ proof -
            it's probably worth deduplicating that. *)
         show ?case proof (cases \<open>r \<le> 1\<close>)
           assume "r \<le> 1"
+          (* TODO: The paper assumes we must have l=0 here. The only clean way I can see of doing
+                   that is actually introducing a well-formedness assumption after all? *)
           then show ?case sorry
         next
           assume "\<not>(r \<le> 1)"
@@ -318,6 +320,50 @@ proof -
   qed
   then show ?thesis using assms by auto
 qed
+
+lemma semantic_chomp_formula:
+  fixes \<phi>::formula and h::heap and h'::heap and \<E>::env and \<E>'::env and x::var and \<iota>::instanc
+    and HT :: header_table
+  assumes "map_of HT \<iota> = Some \<eta>"
+      and "header_length \<eta> \<ge> 1" (* Zero-length headers don't make sense I think *)
+      and h'_def: "h' = chomp\<^sub>S h 1"
+      and \<E>'_def: "\<E>' = \<E>[x \<rightarrow> empty_heap\<lparr> heap_headers := [\<iota> \<mapsto> v] \<rparr>]"
+      and x_in_\<E>: "x \<in> env_dom \<E>
+        \<Longrightarrow> (env_lookup_instance \<E> x \<iota> = Some x_\<iota>
+            \<and> v = x_\<iota> @ take 1 (heap_pkt_in h)
+            \<and> length x_\<iota> = header_length \<eta> - n
+            \<and> env_lookup_packet \<E> x PktIn = Some []
+            \<and> env_lookup_packet \<E> x PktOut = Some [])"
+      and x_not_in_\<E>: "x \<notin> env_dom \<E> \<Longrightarrow> (v = take 1 (heap_pkt_in h))
+                    \<and> atom x \<sharp> \<phi>
+                    \<and> header_length \<eta> = n"
+      and has_pkt_in: "length (heap_pkt_in h) \<ge> 1" (* Is required I think, implied in the paper by h(pktIn)[0:1] being well-defined *)
+      and "n \<ge> 1"
+      and "n \<le> header_length \<eta>"
+      and "x \<noteq> y" (* Not sure about this, paper doesn't state it, but I do think needs it? *)
+      and "\<lbrakk>\<phi> in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>f = Some res"
+(* TODO: y just appears in the lemma. It probably needs freshness assumptions? *)
+  shows "(\<lbrakk>heapRef\<^sub>1\<^sub>\<phi> (chomp\<^sub>1\<^sub>\<phi> \<phi> y) x \<iota> (header_length \<eta>) n in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>f) = (\<lbrakk>\<phi> in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>f)"
+proof -
+  let ?ref_chomp = "\<lambda>\<phi>. heapRef\<^sub>1\<^sub>\<phi> (chomp\<^sub>1\<^sub>\<phi> \<phi> y) x \<iota> (header_length \<eta>) n"
+  let ?ref_chomp\<^sub>e = "\<lambda>\<phi>. heapRef\<^sub>1\<^sub>e (chomp\<^sub>1\<^sub>e \<phi> y) x \<iota> (header_length \<eta>) n"
+  have "(\<exists>res. \<lbrakk>\<phi> in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>f = Some res) \<Longrightarrow> (x \<notin> env_dom \<E> \<longrightarrow> atom x \<sharp> \<phi>) \<Longrightarrow> ?thesis"
+  proof (induction \<phi>)
+    case FTrue show ?case by (auto) next
+    case FFalse show ?case by (auto) next
+    case (Eq e\<^sub>1 e\<^sub>2)
+      have "\<exists> val\<^sub>1. \<lbrakk>e\<^sub>1 in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = Some val\<^sub>1" using Eq.prems by (auto)
+      then have "\<lbrakk>?ref_chomp\<^sub>e e\<^sub>1 in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e = (\<lbrakk>e\<^sub>1 in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e)" using assms by (simp add: semantic_chomp_exp)
+
+      have "\<lbrakk>?ref_chomp (Eq e\<^sub>1 e\<^sub>2) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>f
+        = (\<lbrakk>?ref_chomp\<^sub>e e\<^sub>1 in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e = (\<lbrakk>?ref_chomp\<^sub>e e\<^sub>2 in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e))"
+      have "atom x \<sharp> (Eq e\<^sub>1 e\<^sub>2) \<Longrightarrow> atom x \<sharp> e\<^sub>1" by (auto simp add: fresh_def supp_Eq)
+      moreover have "atom x \<sharp> (Eq e\<^sub>1 e\<^sub>2) \<Longrightarrow> atom x \<sharp> e\<^sub>2" by (auto simp add: fresh_def supp_Eq)
+      ultimately show ?case by (auto simp add: semantic_chomp_exp)
+  qed
+  then show ?thesis using assms by (auto)
+qed
+  
 
 lemma semantic_chomp:
   fixes x::var and \<tau>::heap_ty and \<E>::env and h::heap and HT::header_table and \<iota>::instanc
