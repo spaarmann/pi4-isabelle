@@ -51,10 +51,9 @@ where
   Ent_Refine:   "\<lbrakk> atom x \<sharp> (\<tau>, \<E>, h);
                    h \<Turnstile>\<E> \<tau>; \<lbrakk>\<phi> in \<E>[x \<rightarrow> h]\<rbrakk>\<^sub>f = Some True \<rbrakk>
                 \<Longrightarrow> h \<Turnstile>\<E> (Refinement x \<tau> \<phi>)" |
-  Ent_Sigma:    "\<lbrakk> atom x \<sharp> (\<tau>\<^sub>1, \<E>, h, h\<^sub>1, h\<^sub>2);
-                   h = h\<^sub>1 ++ h\<^sub>2;
+  Ent_Sigma:    "\<lbrakk> atom x \<sharp> (\<tau>\<^sub>1, \<E>, h\<^sub>1, h\<^sub>2);
                    h\<^sub>1 \<Turnstile>\<E> \<tau>\<^sub>1; h\<^sub>2 \<Turnstile>(\<E>[x \<rightarrow> h\<^sub>1]) \<tau>\<^sub>2\<rbrakk>
-                \<Longrightarrow> h \<Turnstile>\<E> (Sigma x \<tau>\<^sub>1 \<tau>\<^sub>2)" |
+                \<Longrightarrow> (h\<^sub>1 ++ h\<^sub>2) \<Turnstile>\<E> (Sigma x \<tau>\<^sub>1 \<tau>\<^sub>2)" |
   Ent_Subst:    "\<lbrakk> atom x \<sharp> (\<tau>\<^sub>2, \<E>, h, h\<^sub>2);
                    h\<^sub>2 \<Turnstile>\<E> \<tau>\<^sub>2; h \<Turnstile>(\<E>[x \<rightarrow> h\<^sub>2]) \<tau>\<^sub>1 \<rbrakk>
                 \<Longrightarrow> h \<Turnstile>\<E> (Substitution \<tau>\<^sub>1 x \<tau>\<^sub>2)"
@@ -62,19 +61,12 @@ where
 declare heap_entails_ty.intros[simp]
 declare heap_entails_ty.intros[intro]
 
-equivariance heap_entails_ty
-declare fresh_star_def[simp]
+equivariance heap_entails_ty                                                   
 nominal_inductive heap_entails_ty
   avoids Ent_Sigma: x
        | Ent_Refine: x
        | Ent_Subst: x
-  sorry
-  
-       (*| jw_Rec: x and y
-       | jw_Let: x
-       | jw_Roll: \<alpha>
-       | jw_Unroll: \<alpha>
-  by (auto simp: fresh_subst_type fresh_Pair)*)
+  by (auto simp add: fresh_star_def fresh_Pair pure_fresh)
 
 definition env_entails_ty_env :: "env \<Rightarrow> ty_env \<Rightarrow> bool" ("_ \<TTurnstile> _" [50,50] 500)
 where
