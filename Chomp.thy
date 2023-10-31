@@ -6,24 +6,24 @@ fun "chomp\<^sub>1\<^sub>e" :: "exp \<Rightarrow> var \<Rightarrow> exp" where
   "chomp\<^sub>1\<^sub>e (Len x PktIn) y = (if x = y then Plus (Num 1) (Len x PktIn) else (Len x PktIn))" |
   "chomp\<^sub>1\<^sub>e (Packet x PktIn) y = (if x = y then Concat (Bv [BitVar]) (Packet x PktIn)
                                            else (Packet x PktIn))" |
-  "chomp\<^sub>1\<^sub>e (Slice (SlPacket x PktIn) l r) y = (if x \<noteq> y then (Slice (SlPacket x PktIn) l r)
-    else (if r \<le> 1 then (Bv [BitVar])
-    else (if l = 0 then (Concat (Bv [BitVar]) (Slice (SlPacket x PktIn) 0 (r - 1)))
-    else (Slice (SlPacket x PktIn) (l - 1) (r - 1)))))" |
+  "chomp\<^sub>1\<^sub>e (Slice (SlPacket x PktIn) rng) y = (if x \<noteq> y then (Slice (SlPacket x PktIn) rng)
+    else (if right rng \<le> 1 then (Bv [BitVar])
+    else (if left rng = 0 then (Concat (Bv [BitVar]) (Slice (SlPacket x PktIn) (slice_range 0 (right rng - 1))))
+    else (Slice (SlPacket x PktIn) (slice_range (left rng - 1) (right rng - 1))))))" |
   "chomp\<^sub>1\<^sub>e (Plus e\<^sub>1 e\<^sub>2) y = Plus (chomp\<^sub>1\<^sub>e e\<^sub>1 y) (chomp\<^sub>1\<^sub>e e\<^sub>2 y)" |
   "chomp\<^sub>1\<^sub>e (Concat e\<^sub>1 e\<^sub>2) y = Concat (chomp\<^sub>1\<^sub>e e\<^sub>1 y) (chomp\<^sub>1\<^sub>e e\<^sub>2 y)" |
   "chomp\<^sub>1\<^sub>e (Num n) _ = Num n" |
   "chomp\<^sub>1\<^sub>e (Bv bv) _ = Bv bv" |
   "chomp\<^sub>1\<^sub>e (Len x PktOut) _ = Len x PktOut" |
   "chomp\<^sub>1\<^sub>e (Packet x PktOut) _ = Packet x PktOut" |
-  "chomp\<^sub>1\<^sub>e (Slice (SlPacket x PktOut) l r) _ = Slice (SlPacket x PktOut) l r" |
-  "chomp\<^sub>1\<^sub>e (Slice (SlInstance x \<iota>) l r) _ = Slice (SlInstance x \<iota>) l r"
+  "chomp\<^sub>1\<^sub>e (Slice (SlPacket x PktOut) rng) _ = Slice (SlPacket x PktOut) rng" |
+  "chomp\<^sub>1\<^sub>e (Slice (SlInstance x \<iota>) rng) _ = Slice (SlInstance x \<iota>) rng"
 lemma chomp\<^sub>1\<^sub>e_eqvt[eqvt]: "p \<bullet> chomp\<^sub>1\<^sub>e e y = chomp\<^sub>1\<^sub>e (p \<bullet> e) (p \<bullet> y)"
   apply (induction e)
   apply (auto)
   subgoal for x pkt by (cases pkt) (auto)
   subgoal for x pkt by (cases pkt) (auto)
-  subgoal for sl n m apply (cases sl) apply (auto) subgoal for x pkt by (cases pkt) (auto) done
+  subgoal for sl rng apply (cases sl) apply (auto) subgoal for x pkt by (cases pkt) (auto) done
 done
 
 fun chomp\<^sub>1\<^sub>\<phi> :: "formula \<Rightarrow> var \<Rightarrow> formula" where
@@ -120,7 +120,7 @@ fun heapRefBv :: "bv \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> nat \
   (* The slice upper bound is originally "sz - n + 1" but swapping the order avoids the annoying
      nat edge case. *)
   "heapRefBv (b#bv) x \<iota> sz n = Concat (if b = BitVar
-    then Slice (SlInstance x \<iota>) (sz - n) (sz + 1 - n)
+    then Slice (SlInstance x \<iota>) (slice_range_one (sz - n))
     else Bv [b]) (heapRefBv bv x \<iota> sz n)" |
   "heapRefBv [] _ _ _ _ = Bv []"
 lemma heapRefBv_eqvt[eqvt]:
@@ -159,7 +159,7 @@ fun heapRef\<^sub>1\<^sub>e :: "exp \<Rightarrow> var \<Rightarrow> instanc \<Ri
   "heapRef\<^sub>1\<^sub>e (Num n) _ _ _ _ = Num n" |
   "heapRef\<^sub>1\<^sub>e (Packet y p) _ _ _ _ = Packet y p" |
   "heapRef\<^sub>1\<^sub>e (Len y p) _ _ _ _ = Len y p" |
-  "heapRef\<^sub>1\<^sub>e (Slice sl n m) _ _ _ _ = Slice sl n m"
+  "heapRef\<^sub>1\<^sub>e (Slice sl rng) _ _ _ _ = Slice sl rng"
 lemma heapRef\<^sub>1\<^sub>e_eqvt[eqvt]:
   "p \<bullet> heapRef\<^sub>1\<^sub>e e x \<iota> sz n = heapRef\<^sub>1\<^sub>e (p \<bullet> e) (p \<bullet> x) (p \<bullet> \<iota>) (p \<bullet> sz) (p \<bullet> n)"
   by (induction e) (auto simp add: permute_pure)

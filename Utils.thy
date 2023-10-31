@@ -1,15 +1,17 @@
 theory Utils imports Syntax begin
 
-definition slice :: "'a list \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> 'a list" where
-  "slice xs n m = take (m - n) (drop n xs)"
+definition slice :: "'a list \<Rightarrow> slice_range \<Rightarrow> 'a list" where
+  "slice xs rng = take (right rng - left rng) (drop (left rng) xs)"
 
-lemma slice_last: "length xs > 0 \<Longrightarrow> slice xs (length xs - 1) (length xs) = [last xs]" 
-  by (auto simp add: slice_def)
-     (metis One_nat_def append_butlast_last_id append_eq_conv_conj length_butlast)
+lemma slice_last: "length xs > 0 \<Longrightarrow> slice xs (slice_range_one (length xs - 1)) = [last xs]" 
+  unfolding slice_def apply (simp)
+  by (metis One_nat_def append_butlast_last_id append_eq_conv_conj length_butlast)
 
 text\<open>Replaces [n:m) in the first input list with the second list.\<close>
-definition splice :: "'a list \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> 'a list \<Rightarrow> 'a list" where
-  "splice xs n m ins = (slice xs 0 n) @ ins @ (slice xs m (length xs))"
+definition splice :: "'a list \<Rightarrow> slice_range \<Rightarrow> 'a list \<Rightarrow> 'a list" where
+  "splice xs rng ins = (if left rng = 0
+    then ins @ (slice xs (slice_range (right rng) (length xs)))
+    else (slice xs (slice_range 0 (left rng))) @ ins @ (slice xs (slice_range (right rng) (length xs))))"
 
 
 section\<open>Nominal2 Lemmas\<close>
@@ -41,18 +43,18 @@ section\<open>Headers\<close>
 definition empty_headers :: headers where "empty_headers = Map.empty"
 declare empty_headers_def[simp]
 
-fun header_field_to_range_helper :: "nat \<Rightarrow> field list \<Rightarrow> field_name \<Rightarrow> (nat \<times> nat)" where
-  "header_field_to_range_helper acc (f#fs) tgt = (if field_name f = tgt then (acc, acc + field_length f)
+fun header_field_to_range_helper :: "nat \<Rightarrow> field list \<Rightarrow> field_name \<Rightarrow> slice_range" where
+  "header_field_to_range_helper acc (f#fs) tgt = (if field_name f = tgt then slice_range acc (acc + field_length f)
     else header_field_to_range_helper (acc + field_length f) fs tgt)" |
   "header_field_to_range_helper acc [] tgt = undefined"
 
-definition header_field_to_range :: "header_type \<Rightarrow> field_name \<Rightarrow> (nat \<times> nat)" where
+definition header_field_to_range :: "header_type \<Rightarrow> field_name \<Rightarrow> slice_range" where
   "header_field_to_range \<eta> tgt = header_field_to_range_helper 0 (header_fields \<eta>) tgt"
 lemma header_field_to_range_eqvt[eqvt]:
   "p \<bullet> header_field_to_range \<eta> f = header_field_to_range (p \<bullet> \<eta>) (p \<bullet> f)"
   by (simp add: permute_pure)
 
-fun field_list_to_range :: "field list \<Rightarrow> field_name \<Rightarrow> (nat \<times> nat)" where
+fun field_list_to_range :: "field list \<Rightarrow> field_name \<Rightarrow> slice_range" where
   "field_list_to_range fs tgt = header_field_to_range_helper 0 fs tgt"
 lemma field_list_to_range_eqvt[eqvt]:
   "p \<bullet> field_list_to_range fs tgt = field_list_to_range (p \<bullet> fs) (p \<bullet> tgt)"
@@ -151,13 +153,13 @@ lemma env_update_eqvt[eqvt]: "p \<bullet> \<E>[x \<rightarrow> h] = (p \<bullet>
 section\<open>Helpers for creating expressions\<close>
 
 definition mk_inst_read :: "header_type \<Rightarrow> instanc \<Rightarrow> var \<Rightarrow> exp" where
-  "mk_inst_read \<eta> \<iota> x = (let hl = header_length \<eta> in Slice (SlInstance x \<iota>) 0 hl)"
+  "mk_inst_read \<eta> \<iota> x = (let hl = header_length \<eta> in Slice (SlInstance x \<iota>) (slice_range 0 hl))"
 lemma mk_inst_read_eqvt[eqvt]:
   "p \<bullet> mk_inst_read \<eta> \<iota> x = mk_inst_read (p \<bullet> \<eta>) (p \<bullet> \<iota>) (p \<bullet> x)"
   by (simp add: mk_inst_read_def permute_pure)
 
 definition mk_field_read :: "header_type \<Rightarrow> instanc \<Rightarrow> field_name \<Rightarrow> var \<Rightarrow> exp" where
-  "mk_field_read \<eta> \<iota> f x = (let (n, m) = header_field_to_range \<eta> f in Slice (SlInstance x \<iota>) n m)"
+  "mk_field_read \<eta> \<iota> f x = (let rng = header_field_to_range \<eta> f in Slice (SlInstance x \<iota>) rng)"
 lemma mk_field_read_eqvt[eqvt]:
   "p \<bullet> mk_field_read \<eta> \<iota> f x = mk_field_read (p \<bullet> \<eta>) (p \<bullet> \<iota>) (p \<bullet> f) (p \<bullet> x)"
   by (auto simp add: mk_field_read_def permute_pure)

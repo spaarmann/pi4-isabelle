@@ -9,8 +9,8 @@ inductive unaffected_by_chomp\<^sub>e :: "exp \<Rightarrow> bool" where
   "unaffected_by_chomp\<^sub>e (Bv _)" |
   "unaffected_by_chomp\<^sub>e (Packet _ PktOut)" |
   "unaffected_by_chomp\<^sub>e (Len _ PktOut)" |
-  "unaffected_by_chomp\<^sub>e (Slice (SlInstance _ _) _ _)" |
-  "unaffected_by_chomp\<^sub>e (Slice (SlPacket _ PktOut) _ _)" |
+  "unaffected_by_chomp\<^sub>e (Slice (SlInstance _ _) _)" |
+  "unaffected_by_chomp\<^sub>e (Slice (SlPacket _ PktOut) _)" |
   "\<lbrakk> unaffected_by_chomp\<^sub>e e\<^sub>1; unaffected_by_chomp\<^sub>e e\<^sub>2 \<rbrakk> \<Longrightarrow> unaffected_by_chomp\<^sub>e (Plus e\<^sub>1 e\<^sub>2)" |
   "\<lbrakk> unaffected_by_chomp\<^sub>e e\<^sub>1; unaffected_by_chomp\<^sub>e e\<^sub>2 \<rbrakk> \<Longrightarrow> unaffected_by_chomp\<^sub>e (Concat e\<^sub>1 e\<^sub>2)"
 
@@ -55,14 +55,14 @@ proof -
     from Len.prems(2) have "pkt = PktOut" by (cases) (auto)
     then show ?case by (auto)
   next
-    case (Slice sl n m)
+    case (Slice sl rng)
     show ?case proof (cases sl)
       case (SlPacket z pkt)
       from Slice.prems(2) and SlPacket have "pkt = PktOut" by (cases) (auto)
-      then show "Slice sl n m = ?ref_chomp (Slice sl n m)" using Slice and SlPacket by (auto)
+      then show "Slice sl rng = ?ref_chomp (Slice sl rng)" using Slice and SlPacket by (auto)
     next
       case (SlInstance z \<iota>)
-      then show "Slice sl n m = ?ref_chomp (Slice sl n m)" using Slice by (auto)
+      then show "Slice sl rng = ?ref_chomp (Slice sl rng)" using Slice by (auto)
     qed
   qed
   then show ?thesis using assms by auto
@@ -184,12 +184,17 @@ proof -
         {
           have "env_lookup_instance (\<E>'[y \<rightarrow> h']) x \<iota> = Some v" using \<E>'_def and h'_def and \<open>x \<noteq> y\<close>
             by (auto simp add: env_lookup_instance_def env_update_def update_conv)
-
-          then have "\<lbrakk>Slice (SlInstance x \<iota>) (?sz - n) (?sz + 1 - n) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
+          moreover {
+            have "length v > 0" using v_length \<open>n \<le> ?sz\<close> by (auto)
+            then have "slice v (slice_range_one (length v - 1)) = [last v]"
+              by (rule slice_last)
+            moreover have "?sz - n = length v - 1" using v_length by (simp)
+            ultimately have "slice v (slice_range_one (?sz - n)) = [last v]" by (simp)
+          }
+          ultimately have "\<lbrakk>Slice (SlInstance x \<iota>) (slice_range_one (?sz - n)) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
                       = Some (VBv [last v])" using v_length \<open>?sz \<ge> 1\<close> \<open>n \<ge> 1\<close> \<open>n \<le> ?sz\<close>
-            by (auto) (metis Suc_diff_le diff_Suc_1 slice_last zero_less_Suc)
-
-          then have "\<lbrakk>Concat (Slice (SlInstance x \<iota>) (?sz - n) (?sz + 1 - n)) (Bv []) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
+            by (auto)
+          then have "\<lbrakk>Concat (Slice (SlInstance x \<iota>) (slice_range_one (?sz - n))) (Bv []) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
                         = Some (VBv [last v])" using \<E>'_def \<open>?sz \<ge> 1\<close> v_length \<open>n \<ge> 1\<close> \<open>n \<le> ?sz\<close>
             by (auto simp add: bv_to_val_def)
         }
@@ -257,17 +262,17 @@ proof -
       qed
     qed
   next
-    case (Slice sl l r)
+    case (Slice sl rng)
     show ?case proof (cases sl)
       fix z pkt
       assume SlPacket: "sl = SlPacket z pkt"
       show ?case proof (cases \<open>z = y\<close>)
         assume "z \<noteq> y"
-        then have ref_chomp_nop: "?ref_chomp (Slice sl l r) = Slice sl l r" using SlPacket
+        then have ref_chomp_nop: "?ref_chomp (Slice sl rng) = Slice sl rng" using SlPacket
           by (cases pkt) (auto)
         then show ?case proof (cases \<open>z = x\<close>)
           assume "z = x"
-          have "atom x \<sharp> Slice (SlPacket x pkt) l r \<Longrightarrow> False"
+          have "atom x \<sharp> Slice (SlPacket x pkt) rng \<Longrightarrow> False"
             by (metis fresh_at_base(2) fresh_def supp_Slice supp_SlPacket)
           then show ?case
             using \<open>z = x\<close> \<open>z \<noteq> y\<close> ref_chomp_nop \<E>'_def x_in_\<E> x_not_in_\<E> SlPacket Slice(2)
@@ -298,9 +303,9 @@ proof -
         qed
       qed
     next
-      fix z \<iota>
-      assume SlInstance: "sl = SlInstance z \<iota>"
-      then have ref_chomp_nop: "?ref_chomp (Slice sl l r) = Slice sl l r" by (auto)
+      fix z \<iota>'
+      assume SlInstance: "sl = SlInstance z \<iota>'"
+      then have ref_chomp_nop: "?ref_chomp (Slice sl rng) = Slice sl rng" by (auto)
       show ?case proof (cases \<open>z = y\<close>)
         assume "z = y"
         then show ?case using ref_chomp_nop SlInstance h'_def chomp\<^sub>S_def

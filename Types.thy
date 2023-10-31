@@ -110,12 +110,11 @@ where
                 \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>e (Packet x p) : BV" |
   TE_Len:       "\<lbrakk> map_of \<Gamma> x = Some _ \<rbrakk>
                 \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>e (Len x p) : Nat" |
-  (* TODO: Do these assumptions here make sense? These could be handled by well-formedness instead
-           maybe. For instances this could/should also include m \<le> size if we make HT an input.*)
-  TE_SlicePkt:  "\<lbrakk> map_of \<Gamma> x = Some _; 0 \<le> n \<and> n < m \<rbrakk>
-                \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>e (Slice (SlPacket x p) n m) : BV" |
-  TE_SliceInst: "\<lbrakk> map_of \<Gamma> x = Some \<tau>; ty_includes \<Gamma> \<tau> \<iota>; 0 \<le> n \<and> n < m \<rbrakk>
-                \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>e (Slice (SlInstance x \<iota>) n m) : BV"
+  TE_SlicePkt:  "\<lbrakk> map_of \<Gamma> x = Some _\<rbrakk>
+                \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>e (Slice (SlPacket x p) rng) : BV" |
+  (* TODO: For instances this could/should also include right m \<le> size if we make HT an input.*)
+  TE_SliceInst: "\<lbrakk> map_of \<Gamma> x = Some \<tau>; ty_includes \<Gamma> \<tau> \<iota> \<rbrakk>
+                \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>e (Slice (SlInstance x \<iota>) rng) : BV"
 
 inductive formula_typing :: "ty_env \<Rightarrow> formula \<Rightarrow> base_ty \<Rightarrow> bool"
   ("_ \<turnstile>\<^sub>f _ : _" [50,50,50] 60)

@@ -34,6 +34,29 @@ definition bv_to_bools :: "bv \<Rightarrow> bool list option" where
   "bv_to_bools bv = those (map bool_from_bit bv)"
 declare bv_to_bools_def[simp]
 
+typedef slice_range = "{(n::nat, m::nat). n < m}"
+  by auto
+setup_lifting type_definition_slice_range
+lift_definition left :: "slice_range \<Rightarrow> nat" is fst.
+lift_definition right :: "slice_range \<Rightarrow> nat" is snd.
+lemma slice_range_valid[simp]: "left rng < right rng" by (transfer) (auto)
+
+lift_definition slice_range_one :: "nat \<Rightarrow> slice_range" is "\<lambda>n. (n, n + 1)"
+  by (auto)
+lift_definition slice_range :: "nat \<Rightarrow> nat \<Rightarrow> slice_range"
+  is "\<lambda>n m. if n < m then (n, m) else (undefined, undefined + 1)"
+  by (auto)
+lemma left_range_one[simp]: "left (slice_range_one n) = n" by (transfer) (auto)
+lemma right_range_one[simp]: "right (slice_range_one n) = n + 1" by (transfer) (auto)
+lemma left_range[simp]: "n < m \<Longrightarrow> left (slice_range n m) = n" by (transfer) (auto)
+lemma right_range[simp]: "n < m \<Longrightarrow> right (slice_range n m) = m" by (transfer) (auto)
+
+instantiation slice_range :: pure begin
+  definition permute_slice_range :: "perm \<Rightarrow> slice_range \<Rightarrow> slice_range" where
+    "permute_slice_range p rng = rng"
+  instance by (standard) (auto simp add: permute_slice_range_def)
+end
+
 datatype packet = PktIn | PktOut
 instantiation packet :: pure begin
   definition permute_packet :: "perm \<Rightarrow> packet \<Rightarrow> packet" where
@@ -155,7 +178,7 @@ datatype exp =
   Num nat | Bv bv |
   Plus exp exp | Concat exp exp |
   Packet var packet | Len var packet |
-  Slice sliceable nat nat
+  Slice sliceable slice_range
 instantiation exp :: pt begin
   fun permute_exp :: "perm \<Rightarrow> exp \<Rightarrow> exp" where
     "p \<bullet> (Num n) = Num n" |
@@ -164,7 +187,7 @@ instantiation exp :: pt begin
     "p \<bullet> (Concat e\<^sub>1 e\<^sub>2) = Concat (p \<bullet> e\<^sub>1) (p \<bullet> e\<^sub>2)" |
     "p \<bullet> (Packet x pkt) = Packet (p \<bullet> x) pkt" |
     "p \<bullet> (Len x pkt) = Len (p \<bullet> x) pkt" |
-    "p \<bullet> (Slice sl n m) = Slice (p \<bullet> sl) n m"
+    "p \<bullet> (Slice sl rng) = Slice (p \<bullet> sl) rng"
   instance apply (standard)
     subgoal for e by (induction e) (auto)
     subgoal for p q e by (induction e) (auto)
@@ -195,9 +218,9 @@ proof -
   have "\<forall>a. {b. (a \<rightleftharpoons> b) \<bullet> (Len x pkt) \<noteq> (Len x pkt)} = {b. (a \<rightleftharpoons> b) \<bullet> x \<noteq> x}" by (auto)
   then show ?thesis by (auto simp add: supp_def)
 qed
-lemma supp_Slice: "supp (Slice sl n m) = supp sl"
+lemma supp_Slice: "supp (Slice sl rng) = supp sl"
 proof -
-  have "\<forall>a. {b. (a \<rightleftharpoons> b) \<bullet> (Slice sl n m) \<noteq> (Slice sl n m)} = {b. (a \<rightleftharpoons> b) \<bullet> sl \<noteq> sl}" by (auto)
+  have "\<forall>a. {b. (a \<rightleftharpoons> b) \<bullet> (Slice sl rng) \<noteq> (Slice sl rng)} = {b. (a \<rightleftharpoons> b) \<bullet> sl \<noteq> sl}" by (auto)
   then show ?thesis by (auto simp add: supp_def)
 qed
 
@@ -223,8 +246,8 @@ instantiation exp :: fs begin
         case (Len x pkt) have "supp (Len x pkt) = supp x" by (auto simp add: supp_Len)
         thus "finite (supp (Len x pkt))" by (auto simp add: finite_supp)
       next
-        case (Slice sl n m) have "supp (Slice sl n m) = supp sl" by (auto simp add: supp_Slice)
-        thus "finite (supp (Slice sl n m))" by (auto simp add: finite_supp)
+        case (Slice sl rng) have "supp (Slice sl rng) = supp sl" by (auto simp add: supp_Slice)
+        thus "finite (supp (Slice sl rng))" by (auto simp add: finite_supp)
     qed
   qed
 end
@@ -232,7 +255,7 @@ lemma Num_eqvt[eqvt]: "p \<bullet> (Num n) = Num (p \<bullet> n)" by (simp add: 
 lemma Bv_eqvt[eqvt]: "p \<bullet> (Bv bv) = Bv (p \<bullet> bv)" by (simp add: permute_pure)
 lemma Packet_eqvt[eqvt]: "p \<bullet> (Packet x pkt) = Packet (p \<bullet> x) (p \<bullet> pkt)" by (simp add: permute_pure)
 lemma Len_eqvt[eqvt]: "p \<bullet> (Len x pkt) = Len (p \<bullet> x) (p \<bullet> pkt)" by (simp add: permute_pure)
-lemma Slice_eqvt[eqvt]: "p \<bullet> (Slice sl n m) = Slice (p \<bullet> sl) (p \<bullet> n) (p \<bullet> m)"
+lemma Slice_eqvt[eqvt]: "p \<bullet> (Slice sl rng) = Slice (p \<bullet> sl) (p \<bullet> rng)"
   by (cases sl) (auto simp add: permute_pure)
 
 

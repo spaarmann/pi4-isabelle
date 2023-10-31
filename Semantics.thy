@@ -54,8 +54,8 @@ where
   "(Concat e\<^sub>1 e\<^sub>2)[s/y]\<^sub>e = Concat e\<^sub>1[s/y]\<^sub>e e\<^sub>2[s/y]\<^sub>e" |
   "(Packet x p)[s/y]\<^sub>e = (if x = y then Packet s p else Packet x p)" |
   "(Len x p)[s/y]\<^sub>e = (if x = y then Len s p else Len x p)" |
-  "(Slice (SlPacket x p) n m)[s/y]\<^sub>e = Slice (SlPacket (if x = y then s else x) p) n m" |
-  "(Slice (SlInstance x \<iota>) n m)[s/y]\<^sub>e = Slice (SlInstance (if x = y then s else x) \<iota>) n m"
+  "(Slice (SlPacket x p) rng)[s/y]\<^sub>e = Slice (SlPacket (if x = y then s else x) p) rng" |
+  "(Slice (SlInstance x \<iota>) rng)[s/y]\<^sub>e = Slice (SlInstance (if x = y then s else x) \<iota>) rng"
 lemma subst_var_exp_eqvt[eqvt]: "p \<bullet> e[s/y]\<^sub>e = (p \<bullet> e)[(p \<bullet> s)/(p \<bullet> y)]\<^sub>e"
   apply (induction e)
   apply (auto simp add: permute_pure)
@@ -95,13 +95,13 @@ where
   E_PktOut:     "(In, Out, H, Packet var_heap PktOut) \<rightarrow>\<^sub>e Bv Out" |
   E_PktInLen:   "(In, Out, H, Len var_heap PktIn) \<rightarrow>\<^sub>e Num (length In)" |
   E_PktOutLen:  "(In, Out, H, Len var_heap PktOut) \<rightarrow>\<^sub>e Num (length Out)" |
-  E_SlicePktIn: "\<lbrakk> 0 \<le> n \<and> n < m \<and> m \<le> length In + 1; slice In n m = bs \<rbrakk>
-                \<Longrightarrow> (In, Out, H, Slice (SlPacket var_heap PktIn) n m) \<rightarrow>\<^sub>e Bv bs" |
-  E_SlicePktOut:"\<lbrakk> 0 \<le> n \<and> n < m \<and> m \<le> length Out + 1; slice Out n m = bs \<rbrakk>
-                \<Longrightarrow> (In, Out, H, Slice (SlPacket var_heap PktOut) n m) \<rightarrow>\<^sub>e Bv bs" |
-  E_SliceInst:  "\<lbrakk> H \<iota> = Some bv; 0 \<le> n \<and> n < m \<and> m \<le> length bv + 1;
-                   slice bv n m = bs \<rbrakk>
-                \<Longrightarrow> (In, Out, H, Slice (SlInstance var_heap \<iota>) n m) \<rightarrow>\<^sub>e Bv bs"
+  E_SlicePktIn: "\<lbrakk> right rng \<le> length In; slice In rng = bs \<rbrakk>
+                \<Longrightarrow> (In, Out, H, Slice (SlPacket var_heap PktIn) rng) \<rightarrow>\<^sub>e Bv bs" |
+  E_SlicePktOut:"\<lbrakk> right rng < length Out; slice Out rng = bs \<rbrakk>
+                \<Longrightarrow> (In, Out, H, Slice (SlPacket var_heap PktOut) rng) \<rightarrow>\<^sub>e Bv bs" |
+  E_SliceInst:  "\<lbrakk> H \<iota> = Some bv; right rng \<le> length bv;
+                   slice bv rng = bs \<rbrakk>
+                \<Longrightarrow> (In, Out, H, Slice (SlInstance var_heap \<iota>) rng) \<rightarrow>\<^sub>e Bv bs"
 
 inductive exp_small_steps :: "(bv \<times> bv \<times> headers \<times> exp) \<Rightarrow> exp \<Rightarrow> bool" ("_ \<rightarrow>\<^sub>e* _" [50,50] 50)
 where
@@ -161,9 +161,9 @@ where
     (Some (VBv bv\<^sub>1), Some (VBv bv\<^sub>2)) \<Rightarrow> Some (VBv (bv\<^sub>1 @ bv\<^sub>2)) | _ \<Rightarrow> None)" |
   "\<lbrakk>Packet x p in \<E>\<rbrakk>\<^sub>e = map_option VBv (env_lookup_packet \<E> x p)" |
   "\<lbrakk>Len x p in \<E>\<rbrakk>\<^sub>e = map_option (\<lambda>bv. VNum (length bv)) (env_lookup_packet \<E> x p)" |
-  "\<lbrakk>Slice sl n m in \<E>\<rbrakk>\<^sub>e = Option.bind (env_lookup_sliceable \<E> sl)
-    (\<lambda>bv. if 0 \<le> n \<and> n < m \<and> m \<le> length bv + 1
-          then Some (VBv (slice bv n m)) else None)"
+  "\<lbrakk>Slice sl rng in \<E>\<rbrakk>\<^sub>e = Option.bind (env_lookup_sliceable \<E> sl)
+    (\<lambda>bv. if right rng \<le> length bv
+          then Some (VBv (slice bv rng)) else None)"
 lemma exp_sem_eqvt[eqvt]: "p \<bullet> (\<lbrakk>e in \<E>\<rbrakk>\<^sub>e) = (\<lbrakk>p \<bullet> e in p \<bullet> \<E>\<rbrakk>\<^sub>e)"
   apply (induction e)
   subgoal by (auto)
@@ -228,13 +228,6 @@ lemma formula_sem_eqvt[eqvt]: "p \<bullet> (\<lbrakk>\<phi> in \<E>\<rbrakk>\<^s
   apply (simp_all add: permute_pure split: option.split bool.split)
 done
 
-lemma formula_sem_Eq_Some1: "\<lbrakk>Eq e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>f = Some v \<Longrightarrow> (\<exists>v\<^sub>1. \<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e = Some v\<^sub>1)"
-proof (rule ccontr)
-  assume eq_some: "\<lbrakk>Eq e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>f = Some v"
-  assume "\<nexists>v\<^sub>1. (\<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e) = Some v\<^sub>1" then have "\<lbrakk>e\<^sub>1 in \<E>\<rbrakk>\<^sub>e = None" by (auto)
-  then have "\<lbrakk>Eq e\<^sub>1 e\<^sub>2 in \<E>\<rbrakk>\<^sub>f = None" apply (auto split: option.split split: val.split)
-  then show "False" using plus_some by (auto)
-qed
 
 section\<open>Commands\<close>
 
@@ -253,7 +246,7 @@ where
   C_Assign1:  "\<lbrakk> (In, Out, H, e) \<rightarrow>\<^sub>e e' \<rbrakk>
               \<Longrightarrow> HT \<turnstile> (In, Out, H, Assign \<iota> f e) \<rightarrow> (In, Out, H, Assign \<iota> f e')" |
   C_Assign:   "\<lbrakk> H \<iota> = Some orig_bv; map_of HT \<iota> = Some \<eta>;
-                 header_field_to_range \<eta> f = (n, m); splice orig_bv n m bv = bv';
+                 header_field_to_range \<eta> f = rng; splice orig_bv rng bv = bv';
                  H' = header_update H \<iota> bv' \<rbrakk>
               \<Longrightarrow> HT \<turnstile> (In, Out, H, Assign \<iota> f (Bv bv)) \<rightarrow> (In, Out, H', Skip)" |
   C_Extract:  "\<lbrakk> map_of HT \<iota> = Some \<eta>; deserialize_header \<eta> In = (In', bv); H' = header_update H \<iota> bv \<rbrakk>
