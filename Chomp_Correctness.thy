@@ -141,6 +141,45 @@ lemma semantic_chomp_exp:
 proof -
   let ?ref_chomp = "\<lambda>e. heapRef\<^sub>1\<^sub>e (chomp\<^sub>1\<^sub>e e y) x \<iota> (header_length \<eta>) n"
   let ?sz = "header_length \<eta>"
+  
+  have last_v: "last v = hd (heap_pkt_in h)" using x_in_\<E> and x_not_in_\<E>
+  proof (cases "x \<in> env_dom \<E>")
+    assume "x \<in> env_dom \<E>"
+    then have "\<exists>b. v = b @ take 1 (heap_pkt_in h)" using x_in_\<E> by (auto)
+    then show "last v = hd (heap_pkt_in h)" using has_pkt_in
+      by (metis One_nat_def hd_conv_nth last_appendR last_snoc length_greater_0_conv
+                order.strict_trans2 take_Suc_conv_app_nth take_eq_Nil2 zero_less_one zero_neq_one)
+  next
+    assume "x \<notin> env_dom \<E>"
+    then show "last v = hd (heap_pkt_in h)" using x_not_in_\<E>
+      by (auto) (metis hd_Nil_eq_last last_ConsL take0 take_Nil take_Suc)
+  qed
+
+  have v_length: "?sz - n + 1 = length v"
+    using x_in_\<E> x_not_in_\<E> has_pkt_in by (cases \<open>x \<in> env_dom \<E>\<close>) (auto)
+  
+  have "env_lookup_instance (\<E>'[y \<rightarrow> h']) x \<iota> = Some v" using \<E>'_def and h'_def and \<open>x \<noteq> y\<close>
+    by (auto simp add: env_lookup_instance_def env_update_def update_conv)
+  moreover {
+    have "length v > 0" using v_length \<open>n \<le> ?sz\<close> by (auto)
+    then have "slice v (slice_range_one (length v - 1)) = [last v]"
+      by (rule slice_last)
+    moreover have "?sz - n = length v - 1" using v_length by (simp)
+    ultimately have "slice v (slice_range_one (?sz - n)) = [last v]" by (simp)
+  }
+  ultimately have "\<lbrakk>Slice (SlInstance x \<iota>) (slice_range_one (?sz - n)) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
+              = Some (VBv [last v])" using v_length \<open>?sz \<ge> 1\<close> \<open>n \<ge> 1\<close> \<open>n \<le> ?sz\<close>
+    by (auto)
+  then have slice_x_\<iota>_last_v:
+    "\<lbrakk>Concat (Slice (SlInstance x \<iota>) (slice_range_one (?sz - n))) (Bv []) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
+      = Some (VBv [last v])"
+    using \<E>'_def \<open>?sz \<ge> 1\<close> v_length \<open>n \<ge> 1\<close> \<open>n \<le> ?sz\<close>
+    by (auto simp add: bv_to_val_def)
+
+  have reconstruct_heap_pkt_in: "hd (heap_pkt_in h) # heap_pkt_in h' = heap_pkt_in h"
+    using h'_def has_pkt_in by (auto simp add: chomp\<^sub>S_def drop_Suc)
+                               (metis Suc_n_not_le_n hd_Cons_tl list.size(3))
+
   have "(\<exists>res. \<lbrakk>e in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = Some res) \<Longrightarrow> (x \<notin> env_dom \<E> \<longrightarrow> atom x \<sharp> e) \<Longrightarrow> ?thesis"
   proof (induction e)
     case (Num n)
@@ -179,48 +218,15 @@ proof -
       assume "z = y"
       show ?case proof (cases pkt)
         assume "pkt = PktIn"
-        have v_length: "?sz - n + 1 = length v"
-          using x_in_\<E> x_not_in_\<E> has_pkt_in by (cases \<open>x \<in> env_dom \<E>\<close>) (auto)
-        {
-          have "env_lookup_instance (\<E>'[y \<rightarrow> h']) x \<iota> = Some v" using \<E>'_def and h'_def and \<open>x \<noteq> y\<close>
-            by (auto simp add: env_lookup_instance_def env_update_def update_conv)
-          moreover {
-            have "length v > 0" using v_length \<open>n \<le> ?sz\<close> by (auto)
-            then have "slice v (slice_range_one (length v - 1)) = [last v]"
-              by (rule slice_last)
-            moreover have "?sz - n = length v - 1" using v_length by (simp)
-            ultimately have "slice v (slice_range_one (?sz - n)) = [last v]" by (simp)
-          }
-          ultimately have "\<lbrakk>Slice (SlInstance x \<iota>) (slice_range_one (?sz - n)) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
-                      = Some (VBv [last v])" using v_length \<open>?sz \<ge> 1\<close> \<open>n \<ge> 1\<close> \<open>n \<le> ?sz\<close>
-            by (auto)
-          then have "\<lbrakk>Concat (Slice (SlInstance x \<iota>) (slice_range_one (?sz - n))) (Bv []) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
-                        = Some (VBv [last v])" using \<E>'_def \<open>?sz \<ge> 1\<close> v_length \<open>n \<ge> 1\<close> \<open>n \<le> ?sz\<close>
-            by (auto simp add: bv_to_val_def)
-        }
-        moreover have "\<lbrakk>Packet y PktIn in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e = Some (VBv (heap_pkt_in h'))"
+        have "\<lbrakk>Packet y PktIn in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e = Some (VBv (heap_pkt_in h'))"
           by (auto simp add: env_lookup_packet_def)
-        ultimately have "\<lbrakk>?ref_chomp (Packet y PktIn) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
-          = Some (VBv ([last v] @ heap_pkt_in h'))" by (auto)
-        moreover have "last v = hd (heap_pkt_in h)" using x_in_\<E> and x_not_in_\<E> proof (cases "x \<in> env_dom \<E>")
-          assume "x \<in> env_dom \<E>"
-          then have "\<exists>b. v = b @ take 1 (heap_pkt_in h)" using x_in_\<E> by (auto)
-          then show "last v = hd (heap_pkt_in h)" using has_pkt_in
-            by (metis One_nat_def hd_conv_nth last_appendR last_snoc length_greater_0_conv
-                      order.strict_trans2 take_Suc_conv_app_nth take_eq_Nil2 zero_less_one zero_neq_one)
-        next
-          assume "x \<notin> env_dom \<E>"
-          then show "last v = hd (heap_pkt_in h)" using x_not_in_\<E>
-            by (auto) (metis hd_Nil_eq_last last_ConsL take0 take_Nil take_Suc)
-        qed
-        ultimately have "\<lbrakk>?ref_chomp (Packet y PktIn) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
-          = Some (VBv (hd (heap_pkt_in h) # heap_pkt_in h'))" by (auto)
-        moreover have "hd (heap_pkt_in h) # heap_pkt_in h' = heap_pkt_in h"
-          using h'_def has_pkt_in by (auto simp add: chomp\<^sub>S_def drop_Suc)
-                                     (metis Suc_n_not_le_n hd_Cons_tl list.size(3))
+        then have "\<lbrakk>?ref_chomp (Packet y PktIn) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
+          = Some (VBv ([last v] @ heap_pkt_in h'))" using slice_x_\<iota>_last_v by (auto)
+        also then have "... = Some (VBv (hd (heap_pkt_in h) # heap_pkt_in h'))"
+          using last_v by (auto)
         moreover have "\<lbrakk>Packet z PktIn in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = Some (VBv (heap_pkt_in h))"
           using \<open>z = y\<close> by (auto simp add: env_lookup_packet_def)
-        ultimately show ?case using \<open>z = y\<close> and \<open>pkt = PktIn\<close> by (auto)
+        ultimately show ?case using \<open>z = y\<close> \<open>pkt = PktIn\<close> reconstruct_heap_pkt_in by (auto)
       next
         assume "pkt = PktOut"
         then have ref_chomp_nop: "?ref_chomp (Packet z pkt) = Packet z pkt" by (auto)
@@ -284,22 +290,38 @@ proof -
         qed
       next
         assume "z = y"
-        (* These subcases require a lot of the same reasoning as for the Packet case above I think,
-           it's probably worth deduplicating that. *)
-        show ?case proof (cases \<open>r \<le> 1\<close>)
-          assume "r \<le> 1"
-          (* TODO: The paper assumes we must have l=0 here. The only clean way I can see of doing
-                   that is actually introducing a well-formedness assumption after all? *)
-          then show ?case sorry
-        next
-          assume "\<not>(r \<le> 1)"
-          then show ?case proof (cases \<open>l = 0\<close>)
-            assume "l = 0"
-            then show ?case sorry
+        show ?case proof (cases pkt)
+          assume "pkt = PktIn"
+          show ?case proof (cases \<open>right rng \<le> 1\<close>)
+            assume "right rng \<le> 1"
+            then have "left rng = 0" by (transfer) (auto)
+            moreover have "right rng = 1" using \<open>right rng \<le> 1\<close> by (transfer) (auto)
+            ultimately have rng_val: "rng = slice_range 0 1" by (transfer) (auto)
+
+            have "\<lbrakk>?ref_chomp (Slice sl rng) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e = Some (VBv [last v])"
+              using SlPacket \<open>z = y\<close> \<open>pkt = PktIn\<close> slice_x_\<iota>_last_v rng_val
+              by (auto)
+            also have "... = Some (VBv [hd (heap_pkt_in h)])" using last_v by (auto)
+
+            moreover have "\<lbrakk>Slice sl rng in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = Some (VBv [hd (heap_pkt_in h)])"
+              using SlPacket \<open>z = y\<close> \<open>pkt = PktIn\<close> rng_val has_pkt_in
+              apply (auto simp add: env_lookup_packet_def)
+              using order.strict_trans2 slice_head by (auto)
+
+            ultimately show ?case by (auto)
           next
-            assume "l \<noteq> 0"
-            then show ?case sorry
+            assume "\<not>(r \<le> 1)"
+            then show ?case proof (cases \<open>l = 0\<close>)
+              assume "l = 0"
+              then show ?case sorry
+            next
+              assume "l \<noteq> 0"
+              then show ?case sorry
+            qed
           qed
+        next
+          assume "pkt = PktOut"
+          then show ?case sorry
         qed
       qed
     next

@@ -3,6 +3,9 @@ theory Utils imports Syntax begin
 definition slice :: "'a list \<Rightarrow> slice_range \<Rightarrow> 'a list" where
   "slice xs rng = take (right rng - left rng) (drop (left rng) xs)"
 
+lemma slice_head: "length xs > 0 \<Longrightarrow> slice xs (slice_range 0 1) = [hd xs]"
+  unfolding slice_def by (simp add: take_Suc)
+
 lemma slice_last: "length xs > 0 \<Longrightarrow> slice xs (slice_range_one (length xs - 1)) = [last xs]" 
   unfolding slice_def apply (simp)
   by (metis One_nat_def append_butlast_last_id append_eq_conv_conj length_butlast)
