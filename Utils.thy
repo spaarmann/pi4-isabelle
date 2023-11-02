@@ -42,17 +42,7 @@ lemma alist_update_eqvt[eqvt]: "p \<bullet> AList.update k v xs = AList.update (
 lemma fresh_star_empty[simp]: "{} \<sharp>* x" by (simp add: fresh_star_def)
 
 
-section\<open>Bitvectors\<close>
-
-lemma bv_to_bools_some:
-  assumes "bv_to_bools bv = Some bits"
-  shows "BitVar \<notin> set bv"
-  sorry
-
 section\<open>Headers\<close>
-
-definition empty_headers :: headers where "empty_headers = Map.empty"
-declare empty_headers_def[simp]
 
 fun header_field_to_range_helper :: "nat \<Rightarrow> field list \<Rightarrow> field_name \<Rightarrow> slice_range" where
   "header_field_to_range_helper acc (f#fs) tgt = (if field_name f = tgt then slice_range acc (acc + field_length f)
@@ -90,10 +80,6 @@ definition join_headers :: "headers \<Rightarrow> headers \<Rightarrow> headers"
 
 
 section\<open>Heaps\<close>
-
-definition empty_heap :: "heap" where
-  "empty_heap = \<lparr> heap_pkt_in = [], heap_pkt_out = [], headers = empty_headers \<rparr>"
-declare empty_heap_def[simp]
 
 definition heap_dom :: "heap \<Rightarrow> instanc set" where
   "heap_dom h = dom (heap_headers h)"
@@ -136,7 +122,10 @@ lemma env_lookup_packet_eqvt[eqvt]:
   "p \<bullet> env_lookup_packet \<E> x pkt = env_lookup_packet (p \<bullet> \<E>) (p \<bullet> x) (p \<bullet> pkt)"
   by (simp add: env_lookup_packet_def permute_packet_def)
 
-lemma env_lookup_packet_update_other:
+lemma env_lookup_packet_update_same[simp]:
+  "env_lookup_packet \<E>[x \<rightarrow> h] x pkt = Some (heap_lookup_packet h pkt)"
+  by (auto simp add: env_lookup_packet_def)
+lemma env_lookup_packet_update_other[simp]:
   "x \<noteq> y \<Longrightarrow> env_lookup_packet \<E>[y \<rightarrow> h] x pkt = env_lookup_packet \<E> x pkt"
 proof -
   have "x \<noteq> y \<Longrightarrow> map_of (heaps \<E>) x = map_of (heaps \<E>[y \<rightarrow> h]) x" by (simp)
@@ -149,6 +138,13 @@ definition env_lookup_instance :: "env \<Rightarrow> var \<Rightarrow> instanc \
 lemma env_lookup_instance_eqvt[eqvt]:
   "p \<bullet> env_lookup_instance \<E> x \<iota> = env_lookup_instance (p \<bullet> \<E>) (p \<bullet> x) (p \<bullet> \<iota>)"
   by (simp add: env_lookup_instance_def) (simp add: permute_pure)
+
+lemma env_lookup_instance_update_same[simp]:
+  "env_lookup_instance \<E>[x \<rightarrow> h] x \<iota> = heap_lookup_instance h \<iota>"
+  by (auto simp add: env_lookup_instance_def)
+lemma env_lookup_instance_update_other[simp]:
+  "x \<noteq> y \<Longrightarrow> env_lookup_instance \<E>[y \<rightarrow> h] x \<iota> = env_lookup_instance \<E> x \<iota>"
+  by (auto simp add: env_lookup_instance_def env_update_def update_conv)
 
 fun env_lookup_sliceable :: "env \<Rightarrow> sliceable \<Rightarrow> bv option" where
   "env_lookup_sliceable \<E> (SlPacket x p) = env_lookup_packet \<E> x p" |

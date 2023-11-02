@@ -68,9 +68,38 @@ proof -
   then show ?thesis using assms by auto
 qed
 
+
+
+definition zero_packet_and_update_header :: "env \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> bv \<Rightarrow> env" where
+  "zero_packet_and_update_header \<E> x \<iota> v =
+    (let new_hdrs = (case map_of (heaps \<E>) x of Some h \<Rightarrow> (heap_headers h)(\<iota> \<mapsto> v) | None \<Rightarrow> [\<iota> \<mapsto> v])
+      in \<E>[x \<rightarrow> empty_heap\<lparr> heap_headers := new_hdrs(\<iota> \<mapsto> v) \<rparr>])"
+
+lemma zero_and_update_x_\<iota>[simp]:
+  "env_lookup_instance (zero_packet_and_update_header \<E> x \<iota> v) x \<iota> = Some v"
+  by (auto simp add: env_lookup_instance_def zero_packet_and_update_header_def)
+lemma zero_and_update_x_\<iota>'[simp]:
+  "\<iota> \<noteq> \<iota>' \<Longrightarrow> env_lookup_instance (zero_packet_and_update_header \<E> x \<iota> v) y \<iota>'
+              = env_lookup_instance \<E> y \<iota>'"
+  by (cases \<open>x = y\<close>; cases \<open>map_of (heaps \<E>) x\<close>)
+     (auto simp add: env_lookup_instance_def zero_packet_and_update_header_def)
+lemma zero_and_update_y_\<iota>'[simp]:
+  "x \<noteq> y \<Longrightarrow> env_lookup_instance (zero_packet_and_update_header \<E> x \<iota> v) y \<iota>'
+              = env_lookup_instance \<E> y \<iota>'"
+  by (auto simp add: env_lookup_instance_def zero_packet_and_update_header_def)
+
+lemma zero_and_update_x_pkt[simp]:
+  "env_lookup_packet (zero_packet_and_update_header \<E> x \<iota> v) x pkt = Some []"
+  by (cases pkt) (auto simp add: env_lookup_packet_def zero_packet_and_update_header_def)
+lemma zero_and_update_y_pkt[simp]:
+  "x \<noteq> y \<Longrightarrow> env_lookup_packet (zero_packet_and_update_header \<E> x \<iota> v) y pkt
+              = env_lookup_packet \<E> y pkt"
+  by (auto simp add: env_lookup_packet_def zero_packet_and_update_header_def)
+
+
 lemma unchanged_packet_in_chomped_env:
   assumes h'_def: "h' = chomp\<^sub>S h 1"
-      and \<E>'_def: "\<E>' = \<E>[x \<rightarrow> empty_heap\<lparr> heap_headers := [\<iota> \<mapsto> v] \<rparr>]"
+      and \<E>'_def: "\<E>' = zero_packet_and_update_header \<E> x \<iota> v"
       and x_in_\<E>: "x \<in> env_dom \<E>
         \<Longrightarrow> (env_lookup_packet \<E> x PktIn = Some [] \<and> env_lookup_packet \<E> x PktOut = Some [])"
       and x_not_in_\<E>: "x \<notin> env_dom \<E> \<Longrightarrow> atom x \<sharp> (Packet z pkt)"
@@ -78,13 +107,13 @@ lemma unchanged_packet_in_chomped_env:
   shows "\<lbrakk>Packet z pkt in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = (\<lbrakk>Packet z pkt in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e)"
 proof -
   from \<open>z \<noteq> y\<close> have "\<lbrakk>Packet z pkt in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = (\<lbrakk>Packet z pkt in \<E>\<rbrakk>\<^sub>e)"
-    by (auto simp add: env_lookup_packet_update_other)
+    by (auto)
   moreover from \<open>z \<noteq> y\<close> have "\<lbrakk>Packet z pkt in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e = (\<lbrakk>Packet z pkt in \<E>'\<rbrakk>\<^sub>e)"
-    by (auto simp add: env_lookup_packet_update_other)
+    by (auto)
   moreover have "\<lbrakk>Packet z pkt in \<E>\<rbrakk>\<^sub>e = (\<lbrakk>Packet z pkt in \<E>'\<rbrakk>\<^sub>e)" (is ?P)
     proof (cases "z = x")
       assume "z \<noteq> x"
-      then show "?P" using \<open>z \<noteq> y\<close> and \<E>'_def by (auto simp add: env_lookup_packet_update_other)
+      then show "?P" using \<open>z \<noteq> y\<close> and \<E>'_def by (auto)
     next
       assume "z = x"
       then show "?P" proof (cases "x \<in> env_dom \<E>")
@@ -92,7 +121,7 @@ proof -
         then have "\<lbrakk>Packet z pkt in \<E>\<rbrakk>\<^sub>e = Some (VBv [])" using \<open>z = x\<close> and x_in_\<E>
           by (cases pkt) (auto)
         moreover have "\<lbrakk>Packet z pkt in \<E>'\<rbrakk>\<^sub>e = Some (VBv [])" using \<open>z = x\<close> and \<E>'_def
-          by (cases pkt) (auto simp add: env_lookup_packet_def)
+          by (cases pkt) (auto)
         ultimately show "?P" by (auto)
       next
         assume "x \<notin> env_dom \<E>"
@@ -121,7 +150,7 @@ lemma semantic_chomp_exp:
   assumes "map_of HT \<iota> = Some \<eta>"
       and "header_length \<eta> \<ge> 1" (* Zero-length headers don't make sense I think *)
       and h'_def: "h' = chomp\<^sub>S h 1"
-      and \<E>'_def: "\<E>' = \<E>[x \<rightarrow> empty_heap\<lparr> heap_headers := [\<iota> \<mapsto> v] \<rparr>]"
+      and \<E>'_def: "\<E>' = zero_packet_and_update_header \<E> x \<iota> v"
       and x_in_\<E>: "x \<in> env_dom \<E>
         \<Longrightarrow> (env_lookup_instance \<E> x \<iota> = Some x_\<iota>
             \<and> v = x_\<iota> @ take 1 (heap_pkt_in h)
@@ -157,9 +186,9 @@ proof -
 
   have v_length: "?sz - n + 1 = length v"
     using x_in_\<E> x_not_in_\<E> has_pkt_in by (cases \<open>x \<in> env_dom \<E>\<close>) (auto)
-  
+
   have "env_lookup_instance (\<E>'[y \<rightarrow> h']) x \<iota> = Some v" using \<E>'_def and h'_def and \<open>x \<noteq> y\<close>
-    by (auto simp add: env_lookup_instance_def env_update_def update_conv)
+    by (auto)
   moreover {
     have "length v > 0" using v_length \<open>n \<le> ?sz\<close> by (auto)
     then have "slice v (slice_range_one (length v - 1)) = [last v]"
@@ -259,11 +288,11 @@ proof -
         assume "z = x"
         have "atom x \<sharp> Len x pkt \<Longrightarrow> False" by (metis fresh_at_base(2) fresh_def supp_Len)
         then show ?case using \<open>z = x\<close> \<open>z \<noteq> y\<close> \<E>'_def x_in_\<E> x_not_in_\<E> Len
-          by (cases \<open>x \<in> env_dom \<E>\<close>; cases pkt) (auto simp add: env_lookup_packet_def)
+          by (cases \<open>x \<in> env_dom \<E>\<close>; cases pkt) (auto)
       next
         assume "z \<noteq> x"
         from \<open>z \<noteq> x\<close> \<open>z \<noteq> y\<close> have "\<lbrakk>Len z pkt in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = (\<lbrakk>Len z pkt in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e)"
-          using \<E>'_def by (auto simp add: env_lookup_packet_def)
+          using \<E>'_def by (auto)
         then show ?case using ref_chomp_nop by (auto)
       qed
     qed
@@ -282,11 +311,10 @@ proof -
             by (metis fresh_at_base(2) fresh_def supp_Slice supp_SlPacket)
           then show ?case
             using \<open>z = x\<close> \<open>z \<noteq> y\<close> ref_chomp_nop \<E>'_def x_in_\<E> x_not_in_\<E> SlPacket Slice(2)
-            by (cases \<open>x \<in> env_dom \<E>\<close>; cases pkt) (auto simp add: env_lookup_packet_def)
+            by (cases \<open>x \<in> env_dom \<E>\<close>; cases pkt) (auto)
         next
           assume "z \<noteq> x"
-          then show ?case using \<open>z \<noteq> y\<close> ref_chomp_nop SlPacket \<E>'_def
-            by (auto simp add: env_lookup_packet_def)
+          then show ?case using \<open>z \<noteq> y\<close> ref_chomp_nop SlPacket \<E>'_def by (auto)
         qed
       next
         assume "z = y"
@@ -407,8 +435,8 @@ proof -
           show ?case proof (cases \<open>z = x\<close>)
             assume "z \<noteq> x"
             then have "\<lbrakk>Slice sl rng in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = (\<lbrakk>Slice sl rng in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e)"
-              using SlPacket \<open>pkt = PktOut\<close> \<E>'_def h'_def
-              by (cases \<open>z = y\<close>) (auto simp add: env_lookup_packet_def chomp\<^sub>S_def)
+              using SlPacket \<open>pkt = PktOut\<close> \<E>'_def h'_def \<open>x \<noteq> y\<close>
+              by (cases \<open>z = y\<close>) (auto simp add: chomp\<^sub>S_def)
             then show ?case using rc_nop by (auto)
           next
             assume "z = x"
@@ -428,11 +456,17 @@ proof -
         assume "z \<noteq> y"
         show ?case proof (cases \<open>z = x\<close>)
           assume "z = x"
-          then show ?case sorry (* oh oh. Maybe \<E>' should just update x's heap instead of replacing it? *)
+          show ?case proof (cases \<open>\<iota> = \<iota>'\<close>)
+            assume "\<iota> = \<iota>'"
+            show ?case sorry
+          next
+            assume "\<iota> \<noteq> \<iota>'"
+            then show ?case using SlInstance \<open>z = x\<close> \<open>x \<noteq> y\<close> \<E>'_def by (auto)
+          qed
         next
           assume "z \<noteq> x"
           then show ?case using \<open>z \<noteq> y\<close> ref_chomp_nop SlInstance \<E>'_def
-            by (auto simp add: env_lookup_instance_def)
+            by (auto)
         qed
       qed
     qed
@@ -446,7 +480,7 @@ lemma semantic_chomp_formula:
   assumes "map_of HT \<iota> = Some \<eta>"
       and "header_length \<eta> \<ge> 1" (* Zero-length headers don't make sense I think *)
       and h'_def: "h' = chomp\<^sub>S h 1"
-      and \<E>'_def: "\<E>' = \<E>[x \<rightarrow> empty_heap\<lparr> heap_headers := [\<iota> \<mapsto> v] \<rparr>]"
+      and \<E>'_def: "\<E>' = zero_packet_and_update_header \<E> x \<iota> v"
       and x_in_\<E>: "x \<in> env_dom \<E>
         \<Longrightarrow> (env_lookup_instance \<E> x \<iota> = Some x_\<iota>
             \<and> v = x_\<iota> @ take 1 (heap_pkt_in h)

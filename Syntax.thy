@@ -89,7 +89,10 @@ instantiation header_type_ext :: (type) pure begin
 end
 
 type_synonym headers = "instanc \<Rightarrow> bv option"
-                                   
+                              
+definition empty_headers :: headers where "empty_headers = Map.empty"
+declare empty_headers_def[simp]
+
 record heap = 
   heap_pkt_in :: bv
   heap_pkt_out :: bv
@@ -99,6 +102,10 @@ instantiation heap_ext :: (type) pure begin
     "permute_heap_ext p h = h"
   instance by standard (auto simp add: permute_heap_ext_def)
 end
+
+definition empty_heap :: "heap" where
+  "empty_heap = \<lparr> heap_pkt_in = [], heap_pkt_out = [], headers = empty_headers \<rparr>"
+declare empty_heap_def[simp]
 
 record env =
   heaps :: "(var \<times> heap) list"
@@ -135,6 +142,7 @@ lemma env_update_other[simp]: "x \<noteq> y \<Longrightarrow> map_of (heaps \<E>
   by (auto simp add: env_update_def simp flip: alist_update_other)
 lemma env_update_same[simp]: "map_of (heaps \<E>[x \<rightarrow> h]) x = Some h"
   by (auto simp add: env_update_def update_conv)
+
 
 section\<open>Expressions and Formulas\<close>
 
