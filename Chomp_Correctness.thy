@@ -313,7 +313,54 @@ proof -
             assume r_gt_1: "\<not>(right rng \<le> 1)"
             then show ?case proof (cases \<open>left rng = 0\<close>)
               assume "left rng = 0"
-              then show ?case sorry
+              let ?chomped = "Concat (Concat (Slice (SlInstance x \<iota>) (slice_range_one (?sz - n)))
+                                             (Bv []))
+                                     (Slice (SlPacket y PktIn) (slice_range 0 (right rng - 1)))"
+              have rc: "?ref_chomp (Slice sl rng) = ?chomped"
+                using SlPacket \<open>z = y\<close> \<open>pkt = PktIn\<close> \<open>left rng = 0\<close> r_gt_1 by (auto)
+              
+              obtain r::"val option" where r_def: "\<lbrakk>Slice (SlPacket y PktIn) rng in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = r"
+                by (auto)
+              show ?case proof (cases r)
+                assume "r = None"
+                then have "right rng > length (heap_pkt_in h)" using r_def
+                  by (auto simp add: env_lookup_packet_def) (meson leI option.discI)
+                then have "right rng - 1 > length (heap_pkt_in h')"
+                  using h'_def r_gt_1 by (auto simp add: chomp\<^sub>S_def)
+                then have "\<lbrakk>?chomped in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e = None"
+                  (* It should be possible to prove this without the Slice.prems(1), if that becomes
+                     necessary later. *)
+                  using SlPacket \<open>z = y\<close> \<open>pkt = PktIn\<close> Slice.prems(1) r_def \<open>r = None\<close> by (auto)
+                then show ?case using rc r_def \<open>r = None\<close> SlPacket \<open>z = y\<close> \<open>pkt = PktIn\<close> by (simp)
+              next
+                fix val
+                assume "r = Some val"
+                then have right_valid: "right rng \<le> length (heap_pkt_in h)" using r_def
+                  by (auto simp add: env_lookup_packet_def) (metis option.discI)
+                moreover have "length (heap_pkt_in h') = length (heap_pkt_in h) - 1"
+                  using h'_def by (auto simp add: chomp\<^sub>S_def)
+                ultimately have "right (slice_range 0 (right rng - 1)) \<le> length (heap_pkt_in h')"
+                   using r_gt_1 by (auto)
+
+                then have "\<lbrakk>?chomped in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
+                  = Some (VBv ([hd (heap_pkt_in h)]
+                               @ slice (heap_pkt_in h') (slice_range 0 (right rng - 1))))"
+                  using slice_x_\<iota>_last_v last_v by (auto simp add: env_lookup_packet_def)
+
+                moreover have "hd (heap_pkt_in h) # slice (heap_pkt_in h') (slice_range 0 (right rng - 1))
+                  = slice (heap_pkt_in h) (slice_range 0 (right rng))"
+                  using h'_def reconstruct_heap_pkt_in apply (auto simp add: chomp\<^sub>S_def)
+                  using has_pkt_in r_gt_1
+                  by (metis One_nat_def leI length_Cons slice_prepend zero_less_Suc)
+
+                moreover have "\<lbrakk>Slice sl rng in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e
+                  = Some (VBv (slice (heap_pkt_in h) (slice_range 0 (right rng))))"
+                  using SlPacket \<open>z = y\<close> \<open>pkt = PktIn\<close> \<open>left rng = 0\<close> \<open>r = Some val\<close> right_valid
+                        r_gt_1
+                  apply (auto simp add: env_lookup_packet_def) using right_range_left_0 by presburger
+
+                ultimately show ?case using rc by (auto simp add: env_lookup_packet_def)
+              qed
             next
               assume "left rng \<noteq> 0"
               obtain r::"val option" where r_def: "\<lbrakk>Slice (SlPacket y PktIn) rng in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = r"
@@ -322,7 +369,7 @@ proof -
               have rc: "?ref_chomp (Slice sl rng) = Slice (SlPacket y PktIn) (slice_range_sub rng 1)"
                 using r_gt_1 \<open>left rng \<noteq> 0\<close> \<open>z = y\<close> SlPacket \<open>pkt = PktIn\<close> by (auto)
 
-              then show ?case proof (cases r)
+              show ?case proof (cases r)
                 assume "r = None"
                 then have "right rng > length (heap_pkt_in h)" using r_def
                   by (auto simp add: env_lookup_packet_def) (meson leI option.discI)

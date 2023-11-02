@@ -50,6 +50,7 @@ lemma left_range_one[simp]: "left (slice_range_one n) = n" by (transfer) (auto)
 lemma right_range_one[simp]: "right (slice_range_one n) = n + 1" by (transfer) (auto)
 lemma left_range[simp]: "n < m \<Longrightarrow> left (slice_range n m) = n" by (transfer) (auto)
 lemma right_range[simp]: "n < m \<Longrightarrow> right (slice_range n m) = m" by (transfer) (auto)
+lemma right_range_left_0[simp]: "left rng = 0 \<Longrightarrow> rng = slice_range 0 (right rng)" by (transfer) (auto)
 lift_definition slice_range_sub :: "slice_range \<Rightarrow> nat \<Rightarrow> slice_range"
   is "\<lambda>(n, m) k. if k \<le> n then (n - k, m - k) else (undefined, undefined + 1)"
   apply (auto)

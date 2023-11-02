@@ -13,6 +13,11 @@ lemma slice_last: "length xs > 0 \<Longrightarrow> slice xs (slice_range_one (le
 lemma slice_drop: "k \<le> left rng \<Longrightarrow> slice xs rng = slice (drop k xs) (slice_range_sub rng k)"
   unfolding slice_def by (transfer) (auto)
 
+lemma slice_prepend: "length xs > 0 \<Longrightarrow> r > 1
+  \<Longrightarrow> hd xs # slice (drop 1 xs) (slice_range 0 (r - 1)) = slice xs (slice_range 0 r)"
+  unfolding slice_def apply (transfer) apply (auto)
+  by (metis Cons_nth_drop_Suc Suc_lessD Suc_pred drop0 hd_conv_nth length_greater_0_conv take_Suc_Cons)
+
 text\<open>Replaces [n:m) in the first input list with the second list.\<close>
 definition splice :: "'a list \<Rightarrow> slice_range \<Rightarrow> 'a list \<Rightarrow> 'a list" where
   "splice xs rng ins = (if left rng = 0
