@@ -310,13 +310,31 @@ proof -
 
             ultimately show ?case by (auto)
           next
-            assume "\<not>(r \<le> 1)"
-            then show ?case proof (cases \<open>l = 0\<close>)
-              assume "l = 0"
+            assume r_gt_1: "\<not>(right rng \<le> 1)"
+            then show ?case proof (cases \<open>left rng = 0\<close>)
+              assume "left rng = 0"
               then show ?case sorry
             next
-              assume "l \<noteq> 0"
-              then show ?case sorry
+              assume "left rng \<noteq> 0"
+              obtain r::"val option" where r_def: "\<lbrakk>Slice (SlPacket y PktIn) rng in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = r"
+                by (auto)
+              then show ?case proof (cases r)
+                assume "r = None"
+                then have "right rng > (length (heap_pkt_in h))" sorry
+                (* This is the only reason this can be None, and then the chomped one is too *)
+                then show ?case sorry
+              next
+                fix val
+                assume "r = Some val"
+                then show ?case sorry
+              qed
+
+              then have "?ref_chomp (Slice sl rng)
+                = Slice (SlPacket y PktIn) (slice_range_sub rng 1)"
+                using r_gt_1 \<open>z = y\<close> SlPacket \<open>pkt = PktIn\<close> by (auto)
+              moreover have "\<lbrakk>... in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
+                = Some (VBv (slice (heap_pkt_in h') (slice_range_sub rng 1)))"
+                by (auto simp add: env_lookup_packet_def)
             qed
           qed
         next

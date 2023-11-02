@@ -50,6 +50,10 @@ lemma left_range_one[simp]: "left (slice_range_one n) = n" by (transfer) (auto)
 lemma right_range_one[simp]: "right (slice_range_one n) = n + 1" by (transfer) (auto)
 lemma left_range[simp]: "n < m \<Longrightarrow> left (slice_range n m) = n" by (transfer) (auto)
 lemma right_range[simp]: "n < m \<Longrightarrow> right (slice_range n m) = m" by (transfer) (auto)
+lift_definition slice_range_sub :: "slice_range \<Rightarrow> nat \<Rightarrow> slice_range"
+  is "\<lambda>(n, m) k. if k \<le> n then (n - k, m - k) else (undefined, undefined + 1)"
+  apply (auto)
+  by (metis Pair_inject diff_less_mono less_add_one)
 
 instantiation slice_range :: pure begin
   definition permute_slice_range :: "perm \<Rightarrow> slice_range \<Rightarrow> slice_range" where

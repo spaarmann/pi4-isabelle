@@ -9,7 +9,7 @@ fun "chomp\<^sub>1\<^sub>e" :: "exp \<Rightarrow> var \<Rightarrow> exp" where
   "chomp\<^sub>1\<^sub>e (Slice (SlPacket x PktIn) rng) y = (if x \<noteq> y then (Slice (SlPacket x PktIn) rng)
     else (if right rng \<le> 1 then (Bv [BitVar])
     else (if left rng = 0 then (Concat (Bv [BitVar]) (Slice (SlPacket x PktIn) (slice_range 0 (right rng - 1))))
-    else (Slice (SlPacket x PktIn) (slice_range (left rng - 1) (right rng - 1))))))" |
+    else (Slice (SlPacket x PktIn) (slice_range_sub rng 1)))))" |
   "chomp\<^sub>1\<^sub>e (Plus e\<^sub>1 e\<^sub>2) y = Plus (chomp\<^sub>1\<^sub>e e\<^sub>1 y) (chomp\<^sub>1\<^sub>e e\<^sub>2 y)" |
   "chomp\<^sub>1\<^sub>e (Concat e\<^sub>1 e\<^sub>2) y = Concat (chomp\<^sub>1\<^sub>e e\<^sub>1 y) (chomp\<^sub>1\<^sub>e e\<^sub>2 y)" |
   "chomp\<^sub>1\<^sub>e (Num n) _ = Num n" |
