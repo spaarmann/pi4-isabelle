@@ -10,6 +10,9 @@ lemma slice_last: "length xs > 0 \<Longrightarrow> slice xs (slice_range_one (le
   unfolding slice_def apply (simp)
   by (metis One_nat_def append_butlast_last_id append_eq_conv_conj length_butlast)
 
+lemma slice_drop: "k \<le> left rng \<Longrightarrow> slice xs rng = slice (drop k xs) (slice_range_sub rng k)"
+  unfolding slice_def by (transfer) (auto)
+
 text\<open>Replaces [n:m) in the first input list with the second list.\<close>
 definition splice :: "'a list \<Rightarrow> slice_range \<Rightarrow> 'a list \<Rightarrow> 'a list" where
   "splice xs rng ins = (if left rng = 0

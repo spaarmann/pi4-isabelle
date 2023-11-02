@@ -318,23 +318,40 @@ proof -
               assume "left rng \<noteq> 0"
               obtain r::"val option" where r_def: "\<lbrakk>Slice (SlPacket y PktIn) rng in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = r"
                 by (auto)
+
+              have rc: "?ref_chomp (Slice sl rng) = Slice (SlPacket y PktIn) (slice_range_sub rng 1)"
+                using r_gt_1 \<open>left rng \<noteq> 0\<close> \<open>z = y\<close> SlPacket \<open>pkt = PktIn\<close> by (auto)
+
               then show ?case proof (cases r)
                 assume "r = None"
-                then have "right rng > (length (heap_pkt_in h))" sorry
-                (* This is the only reason this can be None, and then the chomped one is too *)
-                then show ?case sorry
+                then have "right rng > length (heap_pkt_in h)" using r_def
+                  by (auto simp add: env_lookup_packet_def) (meson leI option.discI)
+                moreover then have "right (slice_range_sub rng 1) > length (heap_pkt_in h')"
+                  using h'_def \<open>left rng \<noteq> 0\<close> by (transfer) (auto simp add: chomp\<^sub>S_def)
+                ultimately show ?case using rc SlPacket \<open>z = y\<close> \<open>pkt = PktIn\<close>
+                  by (auto simp add: env_lookup_packet_def)
               next
                 fix val
                 assume "r = Some val"
-                then show ?case sorry
-              qed
+                then have right_valid: "right rng \<le> length (heap_pkt_in h)" using r_def
+                  by (auto simp add: env_lookup_packet_def) (metis option.discI)
+                moreover have "length (heap_pkt_in h') = length (heap_pkt_in h) - 1"
+                  using h'_def by (auto simp add: chomp\<^sub>S_def)
+                ultimately have "right (slice_range_sub rng 1) \<le> length (heap_pkt_in h')"
+                  using \<open>left rng \<noteq> 0\<close> by (transfer) (auto)
 
-              then have "?ref_chomp (Slice sl rng)
-                = Slice (SlPacket y PktIn) (slice_range_sub rng 1)"
-                using r_gt_1 \<open>z = y\<close> SlPacket \<open>pkt = PktIn\<close> by (auto)
-              moreover have "\<lbrakk>... in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
-                = Some (VBv (slice (heap_pkt_in h') (slice_range_sub rng 1)))"
-                by (auto simp add: env_lookup_packet_def)
+                then have rc_res: "\<lbrakk>?ref_chomp (Slice sl rng) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e
+                  = Some (VBv (slice (heap_pkt_in h') (slice_range_sub rng 1)))"
+                  using rc by (auto simp add: env_lookup_packet_def)
+
+                moreover have "\<lbrakk>Slice sl rng in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = Some (VBv (slice (heap_pkt_in h) rng))"
+                  using r_def SlPacket \<open>pkt = PktIn\<close> \<open>z = y\<close> \<open>r = Some val\<close> right_valid
+                  by (auto simp add: env_lookup_packet_def)
+                moreover have "slice (heap_pkt_in h) rng = slice (heap_pkt_in h') (slice_range_sub rng 1)"
+                  using h'_def \<open>left rng \<noteq> 0\<close> by (auto simp add: chomp\<^sub>S_def slice_drop)
+
+                ultimately show ?case by (auto)
+              qed
             qed
           qed
         next
