@@ -403,7 +403,17 @@ proof -
           qed
         next
           assume "pkt = PktOut"
-          then show ?case sorry
+          then have rc_nop: "?ref_chomp (Slice sl rng) = Slice sl rng" using SlPacket by (auto)
+          show ?case proof (cases \<open>z = x\<close>)
+            assume "z \<noteq> x"
+            then have "\<lbrakk>Slice sl rng in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = (\<lbrakk>Slice sl rng in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e)"
+              using SlPacket \<open>pkt = PktOut\<close> \<E>'_def h'_def
+              by (cases \<open>z = y\<close>) (auto simp add: env_lookup_packet_def chomp\<^sub>S_def)
+            then show ?case using rc_nop by (auto)
+          next
+            assume "z = x"
+            then show ?case using \<open>z = y\<close> \<open>x \<noteq> y\<close> by (auto)
+          qed
         qed
       qed
     next
