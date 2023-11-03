@@ -2,6 +2,7 @@ theory Types imports Semantics begin
 
 section\<open>Types\<close>
 
+text\<open>Semantics of the different heap types. Each heap type corresponds to a set of valid heaps.\<close>
 nominal_function heap_ty_sem :: "heap_ty \<Rightarrow> env \<Rightarrow> heap set" ("\<lbrakk>_ in _\<rbrakk>\<^sub>t" [50,60] 100)
 where
   "\<lbrakk>Nothing in \<E>\<rbrakk>\<^sub>t = {}" |
@@ -73,6 +74,7 @@ where
   "(\<E> \<TTurnstile> \<Gamma>) = (\<forall>x. x \<in> (fst ` set \<Gamma>)
     \<longrightarrow> (\<exists>h \<tau>. (map_of (heaps \<E>) x = Some h) \<and> (map_of \<Gamma> x = Some \<tau>) \<and> (h \<Turnstile>\<E> \<tau>)))"
 
+text\<open>Subtyping relation, defined using the entailments defined above.\<close>
 definition subtype_of :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> heap_ty \<Rightarrow> bool" ("_ \<turnstile> _ <: _" [50,50,50] 50)
 where
   "\<Gamma> \<turnstile> \<tau>\<^sub>1 <: \<tau>\<^sub>2 \<equiv> \<forall>\<E>. \<E> \<TTurnstile> \<Gamma> \<longrightarrow> \<lbrakk>\<tau>\<^sub>1 in \<E>\<rbrakk>\<^sub>t \<subseteq> \<lbrakk>\<tau>\<^sub>2 in \<E>\<rbrakk>\<^sub>t"
@@ -83,7 +85,7 @@ definition ty_includes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<
 definition ty_excludes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<Rightarrow> bool" where
   "ty_excludes \<Gamma> \<tau> \<iota> = (\<forall>\<E>. \<E> \<TTurnstile> \<Gamma> \<longrightarrow> (\<forall>h \<in> \<lbrakk>\<tau> in \<E>\<rbrakk>\<^sub>t. \<iota> \<notin> heap_dom h))"
 
-(* TODO: How do I actually write this? Just need some arbitrary variable that gets bound in the second type *)
+
 text\<open>Type denoting the empty heap, \<epsilon> in the paper.\<close>
 definition heap_ty_empty :: "header_table \<Rightarrow> var \<Rightarrow> heap_ty" where
   "heap_ty_empty HT x = Refinement (x) Top (mk_and [Not (IsValid x \<iota>). (\<iota>, _) \<leftarrow> HT])"
@@ -96,6 +98,9 @@ definition heap_ty_only :: "header_table \<Rightarrow> var \<Rightarrow> instanc
 text\<open>Type denoting heaps containing at least \<iota>, written as \<iota>~ in the paper.\<close>
 definition heap_ty_at_least :: "var \<Rightarrow> instanc \<Rightarrow> heap_ty" where
   "heap_ty_at_least x \<iota> = Refinement x Top (IsValid x \<iota>)"
+
+
+subsection\<open>Typing Judgements\<close>
 
 inductive exp_typing :: "ty_env \<Rightarrow> exp \<Rightarrow> base_ty \<Rightarrow> bool"
   ("_ \<turnstile>\<^sub>e _ : _" [51,60,60] 60)

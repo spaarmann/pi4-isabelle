@@ -2,46 +2,17 @@ theory Semantics imports Syntax Utils begin
 
 no_notation inverse_divide (infixl "'/" 70) \<comment> \<open>avoid clash with division notation\<close>
 
-section\<open>Expressions and Formulas\<close>
+section\<open>Semantics of Expressions and Formulas\<close>
 
-text\<open>About the semantics for expressions and formulas...
-The paper references, but never defines, small-step semantics for formulas and expressions, which
-are used to define the command small-step semantics and prove the corresponding type safety theorems.
-These are shown to be of the form "(I, O, H, e) -> e'", basically the same form as for commands. H
-here is "a map that relates instance names to records containing the field values". Expressions
-referring to a variable always refer to an implicit variable "heap" when used in commands, which
-corresponds with the H parameter for the small-step semantics.
+text\<open>We have two types of semantics for both expressions and formulas:
 
-What the paper does present are denotational-style semantics for a subset of expressions. It also
-defines them for formulas (in the text below Fig. 5). These are both defined in terms of an
-environment \<epsilon> that maps variable names to heaps, that is also used to define the semantics of
-heap *types*.
-
-So, right now my assumption is that we'll need both: small-step semantics to define small-step
-command semantics and ideally denotational semantics / a function to define the semantics of heap
-types (especially refinement types). Unless we can use of them for both? (e.g. use the small-step
-ones for types too?) Probably not because of the different environments I think.
-\<close>
-
-text\<open>Relatedly, let's talk about heaps.
-Section 3.3 says "We model heaps as maps from names to bit vectors".
-
-Section 3.4 says "H is a map that relates instance names to records containing the field values"
-(where H is one of the arguments for the small-step judgement). Later (in appendix B) (I, O, H) is
-defined to mean H[PktIn -> I, PktOut -> O] which is a heap, as defined above. This seems to apply
-that H really maps instance names to bit vectors too?
-I suppose technically there is a 1-to-1 correspondence between a full instance bit vector and a
-"record containing the field values" for an instance. But do we really have to model it like this,
-converting back and forth when needed?
-
-What forms do we actually have?
- - In types: Heaps with PktIn PktOut instance, all mapping to bvs
- - In semantics: H with instance, mapping to names to bvs
- - In semantics: (I, O, H), being PktIn PktOut and an H as above
-
-So let's model the last two as mapping to bvs as well, with names just desugaring into slices? We
-have the HT that gives us types for each instanc, so can just look up the range corresponding to a
-name.
+- Small-step operational semantics. These are ultimately used to define the operational semantics of
+  commands and thus programs. They are not presented in the paper, just referenced, so we assume
+  generally standard semantics here. The only variable that can occur is the special "heap" variable
+  which is bound to the input heap (In, Out, H).
+- Denotational-style semantics. These are used when evaluating formulas and expressions as part of
+  refinement types. Here, other variables than "heap" are allowed, and evaluation is done using a
+  full `env` environment.
 \<close>
 
 text\<open>The substitution functions for expressions and formulas just need to support replacing one
@@ -231,7 +202,6 @@ done
 
 section\<open>Commands\<close>
 
-(* I added HT as the extra ambient/global context explicitly here. *)
 inductive
   small_step :: "header_table \<Rightarrow> (bv \<times> bv \<times> headers \<times> cmd) \<Rightarrow> (bv \<times> bv \<times> headers \<times> cmd) \<Rightarrow> bool"
   ("(1_/ \<turnstile>/ (_ \<rightarrow>/ _))" [50,0,50] 50)

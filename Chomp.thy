@@ -1,6 +1,8 @@
 theory Chomp imports Syntax Utils begin
 
-section\<open>Syntactic chomp definition\<close>
+section\<open>Chomp function definitions\<close>
+
+subsection\<open>Syntactic chomp\<close>
 
 fun "chomp\<^sub>1\<^sub>e" :: "exp \<Rightarrow> var \<Rightarrow> exp" where
   "chomp\<^sub>1\<^sub>e (Len x PktIn) y = (if x = y then Plus (Num 1) (Len x PktIn) else (Len x PktIn))" |
@@ -117,8 +119,6 @@ nominal_termination (eqvt)
 text\<open>We outline the recursive bitvector case for heapRef1e because lexicographic_order is not able
 to prove termination otherwise, since we would have to construct a new Bv exp in the recursive call.\<close>
 fun heapRefBv :: "bv \<Rightarrow> var \<Rightarrow> instanc \<Rightarrow> nat \<Rightarrow> nat \<Rightarrow> exp" where
-  (* The slice upper bound is originally "sz - n + 1" but swapping the order avoids the annoying
-     nat edge case. *)
   "heapRefBv (b#bv) x \<iota> sz n = Concat (if b = BitVar
     then Slice (SlInstance x \<iota>) (slice_range_one (sz - n))
     else Bv [b]) (heapRefBv bv x \<iota> sz n)" |
@@ -223,7 +223,7 @@ definition chomp :: "heap_ty \<Rightarrow> header_type \<Rightarrow> instanc \<R
   "chomp \<tau> \<eta> \<iota> x = chompRec \<tau> (header_length \<eta>) x \<iota> (header_length \<eta>)"
 
 
-section\<open>Semantic chomp definition\<close>
+subsection\<open>Semantic chomp definition\<close>
 
 definition chomp\<^sub>S :: "heap \<Rightarrow> nat \<Rightarrow> heap" where
   "chomp\<^sub>S h n = h\<lparr> heap_pkt_in := drop n (heap_pkt_in h) \<rparr>"

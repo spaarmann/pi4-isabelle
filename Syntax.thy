@@ -4,11 +4,23 @@ begin
 
 section\<open>General Definitions\<close>
 
+text\<open>Here we define the syntax of expressions, formulas, and types in \<Pi>4, along with all the
+required auxialliary types. We also define execution and typing environments, with some basic
+functions for modifying them.
+
+All types that are contained in heap_ty must have instances for the pt (permute/permuteable) type
+class from Nominal2, as well as fs (finite support) instances. Types without any variables can just
+have a pure instance instead, which automatically gives the required pt and fs instances.
+\<close>
+
+subsection\<open>Auxiliary types and definitions\<close>
+
+text\<open>We have a single kind of real variables modelled using Nominal2.\<close>
 atom_decl var
 text\<open>There is a special variable called "heap":\<close>
 definition "var_heap" :: var where "var_heap = undefined"
 
-text\<open>Instances don't appear in binders, so we can just model these as string names.\<close>
+text\<open>Instances and fields don't appear in binders, so we can just model these as string names.\<close>
 type_synonym instanc = string
 type_synonym field_name = string
 
@@ -17,6 +29,7 @@ text\<open>Bit vectors are mostly boolean lists.
  Variables only appear internally, never in the surface syntax.\<close>
 datatype bit = Zero | One | BitVar
 type_synonym bv = "bit list"
+text\<open>Permuting bits does nothing, since they do not contain any variables.\<close>
 instantiation bit :: pure begin
   definition permute_bit :: "perm \<Rightarrow> bit \<Rightarrow> bit" where
     "permute_bit _ b = b"
@@ -34,6 +47,8 @@ definition bv_to_bools :: "bv \<Rightarrow> bool list option" where
   "bv_to_bools bv = those (map bool_from_bit bv)"
 declare bv_to_bools_def[simp]
 
+text\<open>Slicing is an operation used in several important places for chomping. Slice ranges are only
+well-formed if they are non-empty. The lower bound is inclusive, the upper bound is exclusive.\<close>
 typedef slice_range = "{(n::nat, m::nat). n < m}"
   by auto
 setup_lifting type_definition_slice_range
@@ -69,6 +84,10 @@ instantiation packet :: pure begin
   instance by standard (auto simp add: permute_packet_def)
 end
 
+text\<open>\<Pi>4 programs start with a declaration of available header types and their fields, as well as
+a mapping of instance names to header types. We model these using the types below, and as being
+stored in a `header_table`, usually called HT, available as global context where necessary.\<close>
+
 record field =
   field_name :: field_name
   field_length :: nat
@@ -87,6 +106,13 @@ instantiation header_type_ext :: (type) pure begin
     "permute_header_type_ext p \<eta> = \<eta>"
   instance by standard (auto simp add: permute_header_type_ext_def)
 end
+
+
+text\<open>The paper assumes different representations of the headers contained in a heap at different
+places: Either as mapping instance names to bit vectors, or as mapping instance names to records
+containing a bit vector for each field of the corresponding header type.
+We stick to the former representation, and represent all field accesses and updates as slices/splices
+respectively of the full bit vector.\<close>
 
 type_synonym headers = "instanc \<Rightarrow> bv option"
                               
@@ -144,7 +170,7 @@ lemma env_update_same[simp]: "map_of (heaps \<E>[x \<rightarrow> h]) x = Some h"
   by (auto simp add: env_update_def update_conv)
 
 
-section\<open>Expressions and Formulas\<close>
+subsection\<open>Expressions and Formulas\<close>
 
 datatype sliceable = SlPacket var packet | SlInstance var instanc
 instantiation sliceable :: pt begin
@@ -346,8 +372,10 @@ declare value\<^sub>f.intros[simp]
 declare value\<^sub>f.intros[intro]
 (*equivariance "value\<^sub>f"*)
 
-section\<open>Types\<close>
+subsection\<open>Types\<close>
 
+text\<open>This is the only place where variables are bound. Thus we use the nominal_datatype command to
+declare heap_ty, with appropriate "binds" declarations.\<close>
 nominal_datatype heap_ty =
   Nothing | Top |
   Sigma x::var \<tau>\<^sub>1::heap_ty \<tau>\<^sub>2::heap_ty binds x in \<tau>\<^sub>2 |
@@ -372,7 +400,8 @@ definition ty_env_add_heap :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> ty_env
 where
   "(\<Gamma>\<^bold>; \<tau>) = AList.update var_heap \<tau> \<Gamma>"
 
-section\<open>Commands\<close>
+
+subsection\<open>Commands\<close>
 
 datatype cmd =
   Skip | Seq cmd cmd | If formula cmd cmd | Assign instanc string exp |

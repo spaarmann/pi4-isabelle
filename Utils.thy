@@ -1,5 +1,9 @@
 theory Utils imports Syntax begin
 
+section\<open>Utility functions and lemmas\<close>
+
+subsection\<open>Slicing and Splicing\<close>
+
 definition slice :: "'a list \<Rightarrow> slice_range \<Rightarrow> 'a list" where
   "slice xs rng = take (right rng - left rng) (drop (left rng) xs)"
 
@@ -25,7 +29,10 @@ definition splice :: "'a list \<Rightarrow> slice_range \<Rightarrow> 'a list \<
     else (slice xs (slice_range 0 (left rng))) @ ins @ (slice xs (slice_range (right rng) (length xs))))"
 
 
-section\<open>Nominal2 Lemmas\<close>
+subsection\<open>Nominal2 Lemmas\<close>
+
+text\<open>To prove equivariance of some of our definitions, we first show it for some built-in functions
+that do not come with equivariance lemmas in Nominal2.\<close>
 
 lemma bind_eqvt[eqvt]: "p \<bullet> Option.bind x f = Option.bind (p \<bullet> x) (p \<bullet> f)"
   by (cases x) auto
@@ -42,7 +49,7 @@ lemma alist_update_eqvt[eqvt]: "p \<bullet> AList.update k v xs = AList.update (
 lemma fresh_star_empty[simp]: "{} \<sharp>* x" by (simp add: fresh_star_def)
 
 
-section\<open>Headers\<close>
+subsection\<open>Headers\<close>
 
 fun header_field_to_range_helper :: "nat \<Rightarrow> field list \<Rightarrow> field_name \<Rightarrow> slice_range" where
   "header_field_to_range_helper acc (f#fs) tgt = (if field_name f = tgt then slice_range acc (acc + field_length f)
@@ -79,7 +86,7 @@ definition join_headers :: "headers \<Rightarrow> headers \<Rightarrow> headers"
   "join_headers H\<^sub>1 H\<^sub>2 = (Map.map_add H\<^sub>1 H\<^sub>2)"
 
 
-section\<open>Heaps\<close>
+subsection\<open>Heaps\<close>
 
 definition heap_dom :: "heap \<Rightarrow> instanc set" where
   "heap_dom h = dom (heap_headers h)"
@@ -108,7 +115,7 @@ lemma concat_heaps_eqvt[eqvt]: "p \<bullet> concat_heaps h\<^sub>1 h\<^sub>2 = c
   by (simp add: permute_pure)
 
 
-section\<open>Environments\<close>
+subsection\<open>Environments\<close>
 
 definition env_dom :: "env \<Rightarrow> var set" where
   "env_dom \<E> = fst ` set (heaps \<E>)"
@@ -157,7 +164,7 @@ lemma env_update_eqvt[eqvt]: "p \<bullet> \<E>[x \<rightarrow> h] = (p \<bullet>
   by (cases \<E>) (auto simp add: permute_pure env_update_def permute_env_ext_def)
 
 
-section\<open>Helpers for creating expressions\<close>
+subsection\<open>Helpers for creating expressions\<close>
 
 definition mk_inst_read :: "header_type \<Rightarrow> instanc \<Rightarrow> var \<Rightarrow> exp" where
   "mk_inst_read \<eta> \<iota> x = (let hl = header_length \<eta> in Slice (SlInstance x \<iota>) (slice_range 0 hl))"
@@ -172,7 +179,7 @@ lemma mk_field_read_eqvt[eqvt]:
   by (auto simp add: mk_field_read_def permute_pure)
 
 
-section\<open>Helper for creating formulas\<close>
+subsection\<open>Helper for creating formulas\<close>
 
 text\<open>Creates a formula that is the AND of all given subformulas.\<close>
 fun mk_and :: "formula list \<Rightarrow> formula" where
