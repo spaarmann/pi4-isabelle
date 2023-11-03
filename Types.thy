@@ -142,15 +142,17 @@ where
   TF_IsValid:   "\<lbrakk> map_of \<Gamma> x = Some _ \<rbrakk>
                 \<Longrightarrow> \<Gamma> \<turnstile>\<^sub>f (IsValid x \<iota>) : Bool"
 
-(* TODO: Freshness assumptions everywhere *)
 inductive command_typing :: "header_table \<Rightarrow> ty_env \<Rightarrow> cmd \<Rightarrow> pi_ty \<Rightarrow> bool"
   ("_, _ \<turnstile> _ : _" [50,50,50,50] 60)
 where
-  TC_Skip:      "\<lbrakk> \<tau>\<^sub>2 = Refinement y \<tau>\<^sub>1 (mk_heap_eq HT y x)  \<rbrakk>
+  TC_Skip:      "\<lbrakk> atom x \<sharp> (\<tau>\<^sub>1, y); atom y \<sharp> \<tau>\<^sub>1;
+                    \<tau>\<^sub>2 = Refinement y \<tau>\<^sub>1 (mk_heap_eq HT y x)  \<rbrakk>
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> Skip : ((x : \<tau>\<^sub>1) \<rightarrow> \<tau>\<^sub>2)" |
-  TC_Seq:       "\<lbrakk> HT, \<Gamma> \<turnstile> c\<^sub>1 : ((x : \<tau>\<^sub>1) \<rightarrow> \<tau>\<^sub>1\<^sub>2); HT, (\<Gamma>\<^bold>, x : \<tau>\<^sub>1) \<turnstile> c\<^sub>2 : ((y : \<tau>\<^sub>1\<^sub>2) \<rightarrow> \<tau>\<^sub>2\<^sub>2) \<rbrakk>
+  TC_Seq:       "\<lbrakk> atom x \<sharp> (\<tau>\<^sub>1, y); atom y \<sharp> (\<tau>\<^sub>1, \<tau>\<^sub>1\<^sub>2);
+                   HT, \<Gamma> \<turnstile> c\<^sub>1 : ((x : \<tau>\<^sub>1) \<rightarrow> \<tau>\<^sub>1\<^sub>2); HT, (\<Gamma>\<^bold>, x : \<tau>\<^sub>1) \<turnstile> c\<^sub>2 : ((y : \<tau>\<^sub>1\<^sub>2) \<rightarrow> \<tau>\<^sub>2\<^sub>2) \<rbrakk>
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> Seq c\<^sub>1 c\<^sub>2 : ((x : \<tau>\<^sub>1) \<rightarrow> (Substitution \<tau>\<^sub>2\<^sub>2 y \<tau>\<^sub>1\<^sub>2))" |
-  TC_If:        "\<lbrakk> (\<Gamma>\<^bold>; \<tau>\<^sub>1) \<turnstile>\<^sub>f \<phi> : Bool;
+  TC_If:        "\<lbrakk> atom x \<sharp> (\<tau>\<^sub>1, y); atom y \<sharp> (\<tau>\<^sub>1, \<tau>\<^sub>1\<^sub>2, \<tau>\<^sub>2\<^sub>2);
+                   (\<Gamma>\<^bold>; \<tau>\<^sub>1) \<turnstile>\<^sub>f \<phi> : Bool;
                    HT, \<Gamma> \<turnstile> c\<^sub>1 : ((x : Refinement y \<tau>\<^sub>1 \<phi>[y/var_heap]\<^sub>f) \<rightarrow> \<tau>\<^sub>1\<^sub>2);
                    HT, \<Gamma> \<turnstile> c\<^sub>2 : ((x : Refinement y \<tau>\<^sub>1 (Not \<phi>[y/var_heap]\<^sub>f)) \<rightarrow> \<tau>\<^sub>2\<^sub>2) \<rbrakk>
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> (If \<phi> c\<^sub>1 c\<^sub>2) : ((x : \<tau>\<^sub>1) \<rightarrow>
@@ -158,7 +160,8 @@ where
                 (* Ignoring the F(i,f) = BV premise here. The paper never mentions it, the thesis
                    seems to say it would be useful for potentially more fine-grained checking as
                    an extension, but it's not actually used yet. *)
-  TC_Assign:    "\<lbrakk> ty_includes \<Gamma> \<tau>\<^sub>1 \<iota>;
+  TC_Assign:    "\<lbrakk> atom x \<sharp> (\<tau>\<^sub>1, y); atom y \<sharp> \<tau>\<^sub>1;
+                   ty_includes \<Gamma> \<tau>\<^sub>1 \<iota>;
                    (\<Gamma>\<^bold>; \<tau>\<^sub>1) \<turnstile>\<^sub>e e : BV;
                    \<phi>\<^sub>p\<^sub>k\<^sub>t = And (Eq (Packet y PktIn) (Packet x PktIn))
                               (Eq (Packet y PktOut) (Packet x PktOut));
@@ -168,33 +171,37 @@ where
                    \<phi>\<^sub>f\<^sub>e\<^sub>q = Eq (mk_field_read \<eta> \<iota> f y) e[x/heap]\<^sub>e \<rbrakk>
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> (Assign \<iota> f e) : ((x : \<tau>\<^sub>1) \<rightarrow> Refinement y Top
                       (And \<phi>\<^sub>p\<^sub>k\<^sub>t (And \<phi>\<^sub>\<iota> (And \<phi>\<^sub>f \<phi>\<^sub>f\<^sub>e\<^sub>q))))" |
-  TC_Extract:   "\<lbrakk> map_of HT \<iota> = Some \<eta>;
+  TC_Extract:   "\<lbrakk> atom x \<sharp> (\<tau>\<^sub>1, y, z, zz); atom y \<sharp> (\<tau>\<^sub>1, z, zz); atom z \<sharp> (\<tau>\<^sub>1, zz); atom zz \<sharp> \<tau>\<^sub>1;
+                   map_of HT \<iota> = Some \<eta>;
                    size_pkt_in_enough \<Gamma> \<tau>\<^sub>1 (header_length \<eta>);
                    \<phi>\<^sub>1 = And (Eq (Packet z PktIn) (Bv [])) (Eq (Packet z PktOut) (Bv []));
                    \<phi>\<^sub>2 = And (Eq (Concat (mk_inst_read \<eta> \<iota> y) (Packet z PktIn)) (Packet x PktIn))
                        (And (Eq (Packet z PktOut) (Packet x PktOut)) (mk_heap_eq_instances HT z x)) \<rbrakk>
                  \<Longrightarrow> HT, \<Gamma> \<turnstile> Extract \<iota> : ((x : \<tau>\<^sub>1) \<rightarrow> Sigma y (Refinement z (heap_ty_only HT zz \<iota>) \<phi>\<^sub>1)
                                                              (Refinement z (chomp \<tau>\<^sub>1 \<eta> \<iota> y) \<phi>\<^sub>2))" | 
-  TC_Remit:     "\<lbrakk> ty_includes \<Gamma> \<tau>\<^sub>1 \<iota>;
+  TC_Remit:     "\<lbrakk> atom x \<sharp> (\<tau>\<^sub>1, y, z, zz); atom y \<sharp> (\<tau>\<^sub>1, z, zz); atom z \<sharp> (\<tau>\<^sub>1, zz); atom zz \<sharp> \<tau>\<^sub>1;
+                   ty_includes \<Gamma> \<tau>\<^sub>1 \<iota>;
                    map_of HT \<iota> = Some \<eta>;
                    \<phi> = And (Eq (Packet z PktIn) (Bv []))
-                           (Eq (Packet z PktOut) (mk_inst_read \<eta> \<iota> x));
-                   atom zz \<sharp> (x, y, z)\<rbrakk>
+                           (Eq (Packet z PktOut) (mk_inst_read \<eta> \<iota> x)) \<rbrakk>
                  \<Longrightarrow> HT, \<Gamma> \<turnstile> Remit \<iota> : ((x : \<tau>\<^sub>1) \<rightarrow> Sigma y (Refinement z \<tau>\<^sub>1 (mk_heap_eq HT z x))
                                                            (Refinement z (heap_ty_empty HT zz) \<phi>))" |
-  TC_Add:       "\<lbrakk> ty_excludes \<Gamma> \<tau>\<^sub>1 \<iota>;
+  TC_Add:       "\<lbrakk> atom x \<sharp> (\<tau>\<^sub>1, y, z, zz); atom y \<sharp> (\<tau>\<^sub>1, z, zz); atom z \<sharp> (\<tau>\<^sub>1, zz); atom zz \<sharp> \<tau>\<^sub>1;
+                   ty_excludes \<Gamma> \<tau>\<^sub>1 \<iota>;
                    map_of HT \<iota> = Some \<eta>; init_header \<eta> = bv;
                    \<phi> = And (Eq (Packet z PktIn) (Packet z PktOut))
                            (And (Eq (Packet z PktOut) (Bv [])) (Eq (mk_inst_read \<eta> \<iota> z) (Bv bv))) \<rbrakk>
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> Add \<iota> : ((x : \<tau>\<^sub>1) \<rightarrow> Sigma y (Refinement z \<tau>\<^sub>1 (mk_heap_eq HT z x))
                                                         (Refinement z (heap_ty_only HT zz \<iota>) \<phi>))" |
-  TC_Reset:     "\<lbrakk> \<phi>\<^sub>1 = And (Eq (Packet z PktOut) (Bv [])) (Eq (Packet z PktIn) (Packet x PktOut));
+  TC_Reset:     "\<lbrakk> atom x \<sharp> (\<tau>\<^sub>1, y, z, zz); atom y \<sharp> (\<tau>\<^sub>1, z, zz); atom z \<sharp> (\<tau>\<^sub>1, zz); atom zz \<sharp> \<tau>\<^sub>1;
+                   \<phi>\<^sub>1 = And (Eq (Packet z PktOut) (Bv [])) (Eq (Packet z PktIn) (Packet x PktOut));
                    \<phi>\<^sub>2 = And (Eq (Packet z PktOut) (Bv [])) (Eq (Packet z PktIn) (Packet x PktIn)) \<rbrakk>
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> Reset : ((x : \<tau>\<^sub>1) \<rightarrow> Sigma y (Refinement z (heap_ty_empty HT zz) \<phi>\<^sub>1)
                                                         (Refinement z (heap_ty_empty HT zz) \<phi>\<^sub>2))" |
   TC_Ascribe:   "\<lbrakk> HT, \<Gamma> \<turnstile> c : \<sigma> \<rbrakk>
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> Ascribe c \<sigma> : \<sigma>" |
-  TC_Sub:       "\<lbrakk> \<Gamma> \<turnstile> \<tau>\<^sub>1 <: \<tau>\<^sub>3; (\<Gamma>\<^bold>, x : \<tau>\<^sub>1) \<turnstile> \<tau>\<^sub>4 <: \<tau>\<^sub>2;
+  TC_Sub:       "\<lbrakk> atom x \<sharp> (\<tau>\<^sub>1, \<tau>\<^sub>3);
+                   \<Gamma> \<turnstile> \<tau>\<^sub>1 <: \<tau>\<^sub>3; (\<Gamma>\<^bold>, x : \<tau>\<^sub>1) \<turnstile> \<tau>\<^sub>4 <: \<tau>\<^sub>2;
                    HT, \<Gamma> \<turnstile> c : ((x : \<tau>\<^sub>3) \<rightarrow> \<tau>\<^sub>4) \<rbrakk>
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> c : ((x : \<tau>\<^sub>1) \<rightarrow> \<tau>\<^sub>2)"
 
