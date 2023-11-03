@@ -4,6 +4,10 @@ section\<open>Correctness of Chomp\<close>
 
 subsection\<open>Helpers for the main proofs below\<close>
 
+(* This whole infrastructure was meant to make many of the cases in the main expression lemma below
+   much easier or trivial, but is currently only used in one of them. It should either be removed
+   or used a lot more. *)
+
 inductive unaffected_by_chomp\<^sub>e :: "exp \<Rightarrow> bool" where
   "unaffected_by_chomp\<^sub>e (Num _)" |
   "unaffected_by_chomp\<^sub>e (Bv _)" |
@@ -136,19 +140,11 @@ qed
 
 subsection\<open>Main Correctness Results\<close>
 
-(* TODO: The paper states an equality of the semantics here. I am unconvinced at the moment that
-   that actually holds if there are BitVars in the original expression.
-   I add an assumption that e evaluates to Some value for now, not sure yet if this will need the
-   full general equality for something later. *)
-(*
- (Some v = (map_option (\<lambda>bv. bv @ take 1 (heap_pkt_in h)) (env_lookup_instance \<E> x \<iota>)))
-            \<and> map_option length (env_lookup_instance \<E> x \<iota>) = Some (header_length \<eta> - n)
-*)
 lemma semantic_chomp_exp:
   fixes e::exp and h::heap and h'::heap and \<E>::env and \<E>'::env and x::var and \<iota>::instanc
     and HT :: header_table
   assumes "map_of HT \<iota> = Some \<eta>"
-      and "header_length \<eta> \<ge> 1" (* Zero-length headers don't make sense I think *)
+      and "header_length \<eta> \<ge> 1" (* Zero-length headers don't make sense *)
       and h'_def: "h' = chomp\<^sub>S h 1"
       and \<E>'_def: "\<E>' = zero_packet_and_update_header \<E> x \<iota> v"
       and x_in_\<E>: "x \<in> env_dom \<E>
@@ -160,14 +156,15 @@ lemma semantic_chomp_exp:
       and x_not_in_\<E>: "x \<notin> env_dom \<E> \<Longrightarrow> (v = take 1 (heap_pkt_in h))
                     \<and> atom x \<sharp> e
                     \<and> header_length \<eta> = n"
-      and has_pkt_in: "length (heap_pkt_in h) \<ge> 1" (* Is required I think, implied in the paper by h(pktIn)[0:1] being well-defined *)
+      and has_pkt_in: "length (heap_pkt_in h) \<ge> 1" (* Is required, implied in the paper by h(pktIn)[0:1] being well-defined *)
       and "n \<ge> 1"
       and "n \<le> header_length \<eta>"
-      and "x \<noteq> y" (* Not sure about this, paper doesn't state it, but I do think needs it? *)
+      and "x \<noteq> y" (* This isn't stated in the paper, but it is required. *)
       and "\<lbrakk>e in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = Some res"
-(* TODO: y just appears in the lemma. It probably needs freshness assumptions? *)
   shows "(\<lbrakk>heapRef\<^sub>1\<^sub>e (chomp\<^sub>1\<^sub>e e y) x \<iota> (header_length \<eta>) n in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e) = (\<lbrakk>e in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e)"
 proof -
+  (* TODO: This proof could be much nicer; there's a fair amount of duplication etc.
+           I ran out of time however. *)
   let ?ref_chomp = "\<lambda>e. heapRef\<^sub>1\<^sub>e (chomp\<^sub>1\<^sub>e e y) x \<iota> (header_length \<eta>) n"
   let ?sz = "header_length \<eta>"
   
@@ -500,7 +497,7 @@ lemma semantic_chomp_formula:
   fixes \<phi>::formula and h::heap and h'::heap and \<E>::env and \<E>'::env and x::var and \<iota>::instanc
     and HT :: header_table
   assumes "map_of HT \<iota> = Some \<eta>"
-      and "header_length \<eta> \<ge> 1" (* Zero-length headers don't make sense I think *)
+      and "header_length \<eta> \<ge> 1" (* Zero-length headers don't make sense *)
       and h'_def: "h' = chomp\<^sub>S h 1"
       and \<E>'_def: "\<E>' = zero_packet_and_update_header \<E> x \<iota> v"
       and x_in_\<E>: "x \<in> env_dom \<E>
@@ -510,14 +507,13 @@ lemma semantic_chomp_formula:
             \<and> env_lookup_packet \<E> x PktIn = Some []
             \<and> env_lookup_packet \<E> x PktOut = Some [])"
       and x_not_in_\<E>: "x \<notin> env_dom \<E> \<Longrightarrow> (v = take 1 (heap_pkt_in h))
-                    \<and> atom x \<sharp> \<phi>
+                    \<and> atom x \<sharp> e
                     \<and> header_length \<eta> = n"
-      and has_pkt_in: "length (heap_pkt_in h) \<ge> 1" (* Is required I think, implied in the paper by h(pktIn)[0:1] being well-defined *)
+      and has_pkt_in: "length (heap_pkt_in h) \<ge> 1" (* Is required, implied in the paper by h(pktIn)[0:1] being well-defined *)
       and "n \<ge> 1"
       and "n \<le> header_length \<eta>"
-      and "x \<noteq> y" (* Not sure about this, paper doesn't state it, but I do think needs it? *)
-      and "\<lbrakk>\<phi> in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>f = Some res"
-(* TODO: y just appears in the lemma. It probably needs freshness assumptions? *)
+      and "x \<noteq> y" (* This isn't stated in the paper, but it is required. *)
+      and "\<lbrakk>e in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = Some res"
   shows "(\<lbrakk>heapRef\<^sub>1\<^sub>\<phi> (chomp\<^sub>1\<^sub>\<phi> \<phi> y) x \<iota> (header_length \<eta>) n in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>f) = (\<lbrakk>\<phi> in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>f)"
 proof -
   let ?ref_chomp = "\<lambda>\<phi>. heapRef\<^sub>1\<^sub>\<phi> (chomp\<^sub>1\<^sub>\<phi> \<phi> y) x \<iota> (header_length \<eta>) n"
@@ -527,18 +523,7 @@ proof -
     case FTrue show ?case by (auto) next
     case FFalse show ?case by (auto) next
     case (Eq e\<^sub>1 e\<^sub>2)
-      have "\<exists> val\<^sub>1. \<lbrakk>e\<^sub>1 in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e = Some val\<^sub>1" using Eq.prems by (auto)
-      then have "\<lbrakk>?ref_chomp\<^sub>e e\<^sub>1 in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e = (\<lbrakk>e\<^sub>1 in \<E>[y \<rightarrow> h]\<rbrakk>\<^sub>e)" using assms by (simp add: semantic_chomp_exp)
-
-      have "\<lbrakk>?ref_chomp (Eq e\<^sub>1 e\<^sub>2) in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>f
-        = (\<lbrakk>?ref_chomp\<^sub>e e\<^sub>1 in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e = (\<lbrakk>?ref_chomp\<^sub>e e\<^sub>2 in \<E>'[y \<rightarrow> h']\<rbrakk>\<^sub>e))"
-      have "atom x \<sharp> (Eq e\<^sub>1 e\<^sub>2) \<Longrightarrow> atom x \<sharp> e\<^sub>1" by (auto simp add: fresh_def supp_Eq)
-      moreover have "atom x \<sharp> (Eq e\<^sub>1 e\<^sub>2) \<Longrightarrow> atom x \<sharp> e\<^sub>2" by (auto simp add: fresh_def supp_Eq)
-      ultimately show ?case by (auto simp add: semantic_chomp_exp)
-  qed
-  then show ?thesis using assms by (auto)
-qed
-  
+      oops
 
 lemma semantic_chomp:
   fixes x::var and \<tau>::heap_ty and \<E>::env and h::heap and HT::header_table and \<iota>::instanc
@@ -550,6 +535,6 @@ lemma semantic_chomp:
           in \<E>[x \<rightarrow> empty_heap\<lparr> heap_headers := empty_headers(
                 \<iota> := Some (take (header_length n) (heap_pkt_in h))
           ) \<rparr>]\<rbrakk>\<^sub>t. h' = chomp\<^sub>S h (header_length \<eta>)"
-sorry
+  oops
 
 end
