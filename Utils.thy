@@ -22,6 +22,9 @@ lemma slice_prepend: "length xs > 0 \<Longrightarrow> r > 1
   unfolding slice_def apply (transfer) apply (auto)
   by (metis Cons_nth_drop_Suc Suc_lessD Suc_pred drop0 hd_conv_nth length_greater_0_conv take_Suc_Cons)
 
+lemma slice_append: "right rng \<le> length xs \<Longrightarrow> slice xs rng = slice (xs @ ys) rng"
+  unfolding slice_def by (auto)
+
 text\<open>Replaces [n:m) in the first input list with the second list.\<close>
 definition splice :: "'a list \<Rightarrow> slice_range \<Rightarrow> 'a list \<Rightarrow> 'a list" where
   "splice xs rng ins = (if left rng = 0

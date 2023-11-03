@@ -199,9 +199,8 @@ where
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> c : ((x : \<tau>\<^sub>1) \<rightarrow> \<tau>\<^sub>2)"
 
 
-section\<open>Safety Results\<close>
+subsection\<open>Safety Results\<close>
 
-find_theorems name: heap_entails_ty
 lemma semantic_entailment: "h \<Turnstile>\<E> \<tau> \<Longrightarrow> h \<in> \<lbrakk>\<tau> in \<E>\<rbrakk>\<^sub>t"
 proof (nominal_induct \<tau> arbitrary: h \<E> rule: heap_ty.strong_induct)
   case Nothing then show ?case by (cases)
@@ -209,10 +208,9 @@ next
   case Top then show ?case by (auto)
 next
   case (Sigma x \<tau>\<^sub>1 \<tau>\<^sub>2)
-  thm Abs_lst1_fcb2'
-  from Sigma.prems obtain h\<^sub>1 h\<^sub>2 where "h\<^sub>2 \<Turnstile>(\<E>[x \<rightarrow> h\<^sub>1]) \<tau>\<^sub>2" apply (cases) apply (auto) sorry
-  from Sigma.prems obtain h\<^sub>1 h\<^sub>2 where "h = h\<^sub>1 ++ h\<^sub>2" "h\<^sub>1 \<Turnstile>\<E> \<tau>\<^sub>1" apply (cases) apply (auto) done
-  from Sigma.prems have "h\<^sub>2 \<Turnstile>(\<E>[x \<rightarrow> h\<^sub>1]) \<tau>\<^sub>2" apply (cases)
-(*  h = h\<^sub>1 ++ h\<^sub>2;
-                   h\<^sub>1 \<Turnstile>\<E> \<tau>\<^sub>1; h\<^sub>2 \<Turnstile>(\<E>[x \<rightarrow> h\<^sub>1]) \<tau>\<^sub>2 *)
+  from Sigma.prems obtain h\<^sub>1 h\<^sub>2
+    where "h = h\<^sub>1 ++ h\<^sub>2" "h\<^sub>1 \<Turnstile>\<E> \<tau>\<^sub>1" "h\<^sub>2 \<Turnstile>(\<E>[x \<rightarrow> h\<^sub>1]) \<tau>\<^sub>2"
+    apply (cases) apply (auto) oops (* TODO: We don't get quite the right results here for the last
+    equation. *)
+
 end

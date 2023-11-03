@@ -456,12 +456,34 @@ proof -
         assume "z \<noteq> y"
         show ?case proof (cases \<open>z = x\<close>)
           assume "z = x"
-          show ?case proof (cases \<open>\<iota> = \<iota>'\<close>)
-            assume "\<iota> = \<iota>'"
-            show ?case sorry
+          show ?case proof (cases \<open>x \<in> env_dom \<E>\<close>)
+            assume "x \<in> env_dom \<E>"
+            then have x_\<iota>_y: "env_lookup_instance \<E>[y \<rightarrow> h] x \<iota> = Some x_\<iota>" using x_in_\<E> \<open>x \<noteq> y\<close>
+              by (auto)
+            show ?case proof (cases \<open>\<iota> = \<iota>'\<close>)
+              assume "\<iota> = \<iota>'"
+              then have "\<iota>' = \<iota>" by (auto)
+              then have right_x_\<iota>: "right rng \<le> length x_\<iota>" using SlInstance Slice \<open>z = x\<close> x_\<iota>_y
+                by (auto) (metis option.discI)
+              then have "slice x_\<iota> rng = slice (x_\<iota> @ (take 1 (heap_pkt_in h))) rng"
+                by (auto simp add: slice_append)
+              then have "slice x_\<iota> rng = slice v rng" using x_in_\<E> \<open>x \<in> env_dom \<E>\<close> by (auto)
+              moreover have "env_lookup_instance (\<E>'[y \<rightarrow> h']) x \<iota> = Some v"
+                using \<E>'_def and h'_def and \<open>x \<noteq> y\<close> by (auto)
+              moreover have "length x_\<iota> < length v"
+                using \<open>x \<in> env_dom \<E>\<close> v_length x_in_\<E> by (auto)
+              ultimately show ?case using ref_chomp_nop SlInstance \<open>z = x\<close> \<open>\<iota> = \<iota>'\<close> x_\<iota>_y right_x_\<iota>
+                by (auto)
+            next
+              assume "\<iota> \<noteq> \<iota>'"
+              then show ?case using SlInstance \<open>z = x\<close> \<open>x \<noteq> y\<close> \<E>'_def by (auto)
+            qed
           next
-            assume "\<iota> \<noteq> \<iota>'"
-            then show ?case using SlInstance \<open>z = x\<close> \<open>x \<noteq> y\<close> \<E>'_def by (auto)
+            assume "x \<notin> env_dom \<E>"
+            then have "atom x \<sharp> (Slice sl rng)" using x_not_in_\<E> Slice by (auto)
+            moreover have "\<not>(atom x \<sharp> (Slice (SlInstance x \<iota>') rng))"
+              by (auto simp add: fresh_def supp_Slice supp_SlInstance supp_at_base)
+            ultimately show ?case using SlInstance \<open>z = x\<close> by blast
           qed
         next
           assume "z \<noteq> x"
