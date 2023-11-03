@@ -1,4 +1,4 @@
-theory Types imports Semantics begin
+theory Types imports Semantics Chomp begin
 
 section\<open>Types\<close>
 
@@ -85,6 +85,9 @@ definition ty_includes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<
 definition ty_excludes :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> instanc \<Rightarrow> bool" where
   "ty_excludes \<Gamma> \<tau> \<iota> = (\<forall>\<E>. \<E> \<TTurnstile> \<Gamma> \<longrightarrow> (\<forall>h \<in> \<lbrakk>\<tau> in \<E>\<rbrakk>\<^sub>t. \<iota> \<notin> heap_dom h))"
 
+definition size_pkt_in_enough :: "ty_env \<Rightarrow> heap_ty \<Rightarrow> nat \<Rightarrow> bool" where
+  "size_pkt_in_enough \<Gamma> \<tau> n = (\<forall>\<E>. \<E> \<TTurnstile> \<Gamma> \<longrightarrow> (\<forall>h \<in> \<lbrakk>\<tau> in \<E>\<rbrakk>\<^sub>t. length (heap_pkt_in h) \<ge> n))"
+
 
 text\<open>Type denoting the empty heap, \<epsilon> in the paper.\<close>
 definition heap_ty_empty :: "header_table \<Rightarrow> var \<Rightarrow> heap_ty" where
@@ -165,7 +168,13 @@ where
                    \<phi>\<^sub>f\<^sub>e\<^sub>q = Eq (mk_field_read \<eta> \<iota> f y) e[x/heap]\<^sub>e \<rbrakk>
                 \<Longrightarrow> HT, \<Gamma> \<turnstile> (Assign \<iota> f e) : ((x : \<tau>\<^sub>1) \<rightarrow> Refinement y Top
                       (And \<phi>\<^sub>p\<^sub>k\<^sub>t (And \<phi>\<^sub>\<iota> (And \<phi>\<^sub>f \<phi>\<^sub>f\<^sub>e\<^sub>q))))" |
-  (* TODO: T-Extract. Skipping Extract for now, want to do chomp last. *)
+  TC_Extract:   "\<lbrakk> map_of HT \<iota> = Some \<eta>;
+                   size_pkt_in_enough \<Gamma> \<tau>\<^sub>1 (header_length \<eta>);
+                   \<phi>\<^sub>1 = And (Eq (Packet z PktIn) (Bv [])) (Eq (Packet z PktOut) (Bv []));
+                   \<phi>\<^sub>2 = And (Eq (Concat (mk_inst_read \<eta> \<iota> y) (Packet z PktIn)) (Packet x PktIn))
+                       (And (Eq (Packet z PktOut) (Packet x PktOut)) (mk_heap_eq_instances HT z x)) \<rbrakk>
+                 \<Longrightarrow> HT, \<Gamma> \<turnstile> Extract \<iota> : ((x : \<tau>\<^sub>1) \<rightarrow> Sigma y (Refinement z (heap_ty_only HT zz \<iota>) \<phi>\<^sub>1)
+                                                             (Refinement z (chomp \<tau>\<^sub>1 \<eta> \<iota> y) \<phi>\<^sub>2))" | 
   TC_Remit:     "\<lbrakk> ty_includes \<Gamma> \<tau>\<^sub>1 \<iota>;
                    map_of HT \<iota> = Some \<eta>;
                    \<phi> = And (Eq (Packet z PktIn) (Bv []))
